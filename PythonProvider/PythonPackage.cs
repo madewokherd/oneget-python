@@ -13,7 +13,6 @@ namespace PythonProvider
         public string name;
         public string version;
         public string status;
-        public string installed_path;
         public PythonInstall install;
         private string distinfo_path;
 
@@ -62,6 +61,7 @@ namespace PythonProvider
             var result = new PythonPackage(null);
             result.status = Constants.PackageStatus.Installed;
             result.distinfo_path = path;
+            result.install = install;
             try
             {
                 result.ReadMetadata(Path.Combine(path, "METADATA"));
@@ -88,6 +88,11 @@ namespace PythonProvider
         internal void YieldSelf(Request request)
         {
             request.YieldSoftwareIdentity(fastpath, name, version ?? "unknown", "pep386", "", "", "", "", "");
+        }
+
+        internal bool MatchesName(string name, Request request)
+        {
+            return this.name.Contains(name);
         }
     }
 }

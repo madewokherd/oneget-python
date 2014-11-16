@@ -54,7 +54,8 @@ namespace PythonProvider
                     {
                         foreach (var package in SearchSiteFolder(install.GlobalSiteFolder(), install, request))
                         {
-                            package.YieldSelf(request);
+                            if (name.IsEmptyOrNull() || package.MatchesName(name, request))
+                                package.YieldSelf(request);
                         }
                     }
                 }
