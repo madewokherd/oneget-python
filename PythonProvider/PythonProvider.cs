@@ -31,6 +31,18 @@ namespace PythonProvider
             return ProviderName;
         }
 
+        private IEnumerable<PythonPackage> SearchSiteFolder(string path, PythonInstall install, Request request)
+        {
+            request.Debug("Python::SearchSiteFolder searching {0}", path);
+            foreach (string dir in Directory.EnumerateDirectories(path, "*.dist-info"))
+            {
+                request.Debug("Python::SearchSiteFolder trying {0}", dir);
+                PythonPackage result = PythonPackage.FromDistInfo(dir, install, request);
+                if (result != null)
+                    yield return result;
+            }
+        }
+
         public void GetInstalledPackages(string name, object requestObject)
         {
             try
@@ -38,7 +50,13 @@ namespace PythonProvider
                 using (var request = requestObject.As<Request>())
                 {
                     request.Debug("Calling '{0}::GetInstalledPackages'", ProviderName);
-                    PythonInstall.FindEnvironments(request); // Not really using this yet, just putting in a call for testing
+                    foreach (var install in PythonInstall.FindEnvironments(request))
+                    {
+                        foreach (var package in SearchSiteFolder(install.GlobalSiteFolder(), install, request))
+                        {
+                            package.YieldSelf(request);
+                        }
+                    }
                 }
             }
             catch (Exception e)

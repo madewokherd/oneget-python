@@ -93,5 +93,10 @@ namespace PythonProvider
             FindEnvironments(result, false, true, request);
             return result;
         }
+
+        public string GlobalSiteFolder()
+        {
+            return QueryPython("-c \"import sys;import distutils.sysconfig;sys.stdout.write(distutils.sysconfig.get_python_lib())\"");
+        }
     }
 }
