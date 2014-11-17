@@ -64,5 +64,32 @@ namespace PythonProvider
             {
                 Debug.WriteLine(string.Format("Unexpected Exception thrown in '{0}::GetInstalledPackages' -- {1}\\{2}\r\n{3}"), ProviderName, e.GetType().Name, e.Message, e.StackTrace);
             }
+        }        public void FindPackage(string name, string requiredVersion, string minimumVersion, string maximumVersion, int id, object requestObject)
+        {
+            try
+            {
+                using (var request = requestObject.As<Request>())
+                {
+                    request.Debug("Calling '{0}::FindPackage'", ProviderName);
+                    try
+                    {
+                        foreach (var package in PyPI.Search(name, request))
+                        {
+                            if (!string.IsNullOrEmpty(requiredVersion) && package.version != requiredVersion)
+                                continue;
+                            // FIXME: Do version comparison with minimumVersion/maximumVersion
+                            package.YieldSelf(request);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        request.Debug("Unexpected Exception thrown in '{0}::FindPackage' -- {1}\\{2}\r\n{3}", ProviderName, e.GetType().Name, e.Message, e.StackTrace);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(string.Format("Unexpected Exception thrown in '{0}::FindPackage' -- {1}\\{2}\r\n{3}"), ProviderName, e.GetType().Name, e.Message, e.StackTrace);
+            }
         }    }
 }

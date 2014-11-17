@@ -13,6 +13,9 @@ namespace PythonProvider
         public string name;
         public string version;
         public string status;
+        public string summary;
+        public string source;
+        public string search_key;
         public PythonInstall install;
         private string distinfo_path;
 
@@ -43,6 +46,8 @@ namespace PythonProvider
                             this.name = value;
                         else if (name == "version")
                             this.version = value;
+                        else if (name == "summary")
+                            this.summary = value;
                     }
                 }
             }
@@ -81,13 +86,15 @@ namespace PythonProvider
             {
                 if (distinfo_path != null)
                     return string.Format("distinfo:{0}", distinfo_path);
+                else if (source != null)
+                    return string.Format("pypi:{0}#{1}/{2}", source, name, version);
                 return null;
             }
         }
 
         internal void YieldSelf(Request request)
         {
-            request.YieldSoftwareIdentity(fastpath, name, version ?? "unknown", "pep386", "", "", "", "", "");
+            request.YieldSoftwareIdentity(fastpath, name, version ?? "unknown", "pep386", summary ?? "", source ?? "", search_key ?? "", "", "");
         }
 
         internal bool MatchesName(string name, Request request)

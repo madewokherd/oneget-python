@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PyPI.cs" />
     <Compile Include="PythonInstall.cs" />
     <Compile Include="PythonPackage.cs" />
     <Compile Include="PythonProvider.cs" />
