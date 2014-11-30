@@ -40,13 +40,16 @@ namespace PythonProvider
             writer.WriteStartElement("param"); //spec
             writer.WriteStartElement("value");
             writer.WriteStartElement("struct");
-            writer.WriteStartElement("member");
-            writer.WriteElementString("name", "name");
-            writer.WriteStartElement("value");
-            writer.WriteElementString("string", name);
-            writer.WriteEndElement(); //value
-            writer.WriteEndElement(); //member
-            // FIXME: Also search description?
+            if (!name.IsEmptyOrNull())
+            {
+                writer.WriteStartElement("member");
+                writer.WriteElementString("name", "name");
+                writer.WriteStartElement("value");
+                writer.WriteElementString("string", name);
+                writer.WriteEndElement(); //value
+                writer.WriteEndElement(); //member
+            }
+            // FIXME: Provide request options to also search summary, description, and keywords?
             writer.WriteEndElement(); //struct
             writer.WriteEndElement(); //value
             writer.WriteEndElement(); //param
