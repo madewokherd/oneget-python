@@ -33,6 +33,15 @@ namespace PythonProvider
             return QueryPython("-c \"import sys;sys.stdout.write(str(sys.version_info[0])+'.'+str(sys.version_info[1])+'.'+str(sys.version_info[2]))\"");
         }
 
+        public bool MatchesVersion(string version)
+        {
+            if (!version.EndsWith("."))
+            {
+                version = version + ".";
+            }
+            return python_version.StartsWith(version);
+        }
+
         public static PythonInstall FromPath(string installpath, Request request)
         {
             try
@@ -43,9 +52,13 @@ namespace PythonProvider
                 if (File.Exists(result.exe_path))
                 {
                     result.python_version = result.GetPythonVersion();
-                    if (!string.IsNullOrEmpty(result.python_version))
-                        return result;
+                    if (string.IsNullOrEmpty(result.python_version))
+                        return null;
                 }
+                string requested_version = request.GetOptionValue("PythonVersion");
+                if (!string.IsNullOrEmpty(requested_version) && !result.MatchesVersion(requested_version))
+                    return null;
+                return result;
             }
             catch
             {

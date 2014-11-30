@@ -31,6 +31,35 @@ namespace PythonProvider
             return ProviderName;
         }
 
+        public void GetDynamicOptions(string category, object requestObject)
+        {
+            using (var request = requestObject.As<Request>())
+            {
+                try
+                {
+                    request.Debug("Calling '{0}::GetDynamicOptions'", ProviderName);
+                    switch ((category ?? "").ToLowerInvariant())
+                    {
+                        case "install":
+                            request.YieldDynamicOption("PythonVersion", "String", false);
+                            break;
+                        case "provider":
+                            request.YieldDynamicOption("PythonVersion", "String", false);
+                            break;
+                        case "source":
+                            break;
+                        case "package":
+                            request.YieldDynamicOption("PythonVersion", "String", false);
+                            break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    request.Debug(string.Format("Unexpected Exception thrown in '{0}::GetDynamicOptions' -- {1}\\{2}\r\n{3}"), ProviderName, e.GetType().Name, e.Message, e.StackTrace);
+                }
+            }
+        }
+
         private IEnumerable<PythonPackage> SearchSiteFolder(string path, PythonInstall install, Request request)
         {
             request.Debug("Python::SearchSiteFolder searching {0}", path);
