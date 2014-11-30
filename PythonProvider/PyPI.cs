@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using OneGet.ProviderSDK;
+using Newtonsoft.Json.Linq;
 
 namespace PythonProvider
 {
@@ -28,6 +29,18 @@ namespace PythonProvider
             stream.Write(call_xml, 0, call_xml.Length);
             stream.Close();
             return result.GetResponse();
+        }
+
+        private static JObject GetDetailedPackageInfo(Tuple<string, string> source, string name, string version)
+        {
+            // Using JSON api here because it provides more info in one request than xmlrpc
+            string uri = String.Format("{0}/{1}/{2}/json", source.Item2, Uri.EscapeUriString(name), Uri.EscapeUriString(version));
+            WebResponse response = WebRequest.Create(uri).GetResponse();
+            HttpWebResponse httpresponse = response as HttpWebResponse;
+            StreamReader reader = new StreamReader(response.GetResponseStream());
+            string json = reader.ReadToEnd();
+            reader.Close();
+            return JObject.Parse(json);
         }
 
         public static IEnumerable<PythonPackage> Search(string name, Request request)
@@ -80,8 +93,17 @@ namespace PythonProvider
                             request.Debug("search returned unexpected value in array");
                             continue;
                         }
-                        PythonPackage package = new PythonPackage(package_info["name"].ToString());
-                        package.version = package_info["version"].ToString();
+                        string package_name = package_info["name"].ToString();
+                        string package_current_version = package_info["version"].ToString();
+                        var detailed_info = GetDetailedPackageInfo(source, package_name, package_current_version);
+                        var uri_listing = detailed_info.GetValue("urls") as JArray;
+                        if (uri_listing == null || uri_listing.Count == 0)
+                        {
+                            request.Debug("package {0} current version has no urls", package_name);
+                            continue;
+                        }
+                        PythonPackage package = new PythonPackage(package_name);
+                        package.version = package_current_version;
                         package.summary = package_info["summary"].ToString();
                         package.source = source.Item1;
                         package.search_key = name;
