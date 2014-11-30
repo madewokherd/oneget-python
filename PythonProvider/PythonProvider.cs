@@ -42,14 +42,17 @@ namespace PythonProvider
                     {
                         case "install":
                             request.YieldDynamicOption("PythonVersion", "String", false);
+                            request.YieldDynamicOption("PythonLocation", "Folder", false);
                             break;
                         case "provider":
                             request.YieldDynamicOption("PythonVersion", "String", false);
+                            request.YieldDynamicOption("PythonLocation", "Folder", false);
                             break;
                         case "source":
                             break;
                         case "package":
                             request.YieldDynamicOption("PythonVersion", "String", false);
+                            request.YieldDynamicOption("PythonLocation", "Folder", false);
                             break;
                     }
                 }

@@ -97,13 +97,23 @@ namespace PythonProvider
         public static List<PythonInstall> FindEnvironments(Request request)
         {
             List<PythonInstall> result = new List<PythonInstall>();
-            if (Environment.Is64BitOperatingSystem)
+            string requested_location = request.GetOptionValue("PythonLocation");
+            if (!requested_location.IsEmptyOrNull())
             {
-                FindEnvironments(result, true, false, request);
-                FindEnvironments(result, true, true, request);
+                PythonInstall install = FromPath(requested_location, request);
+                if (install != null)
+                    result.Add(install);
             }
-            FindEnvironments(result, false, false, request);
-            FindEnvironments(result, false, true, request);
+            else
+            {
+                if (Environment.Is64BitOperatingSystem)
+                {
+                    FindEnvironments(result, true, false, request);
+                    FindEnvironments(result, true, true, request);
+                }
+                FindEnvironments(result, false, false, request);
+                FindEnvironments(result, false, true, request);
+            }
             return result;
         }
 
