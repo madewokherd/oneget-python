@@ -66,27 +66,20 @@ namespace PythonProvider
                 request.Debug("Python::Search asking {0}", source.Item1);
                 using (var response = DoWebRequest(source, call, request))
                 {
-                    XmlReader reader = XmlReader.Create(response.GetResponseStream());
-                    reader.ReadStartElement("methodResponse");
-                    if (!reader.IsStartElement())
+                    var search_response = ParseResponse(response.GetResponseStream(), request) as List<object>;
+                    if (search_response == null)
                     {
-                        request.Debug("Python::Search got unexpected response data");
+                        request.Debug("search returned unexpected value");
                         continue;
                     }
-                    if (reader.Name == "fault")
+                    foreach (var package_info_obj in search_response)
                     {
-                        // FIXME: learn to parse these
-                        request.Debug("Python::Search got fault response");
-                        continue;
-                    }
-                    reader.ReadStartElement("params");
-                    reader.ReadStartElement("param");
-                    reader.ReadStartElement("value");
-                    reader.ReadStartElement("array");
-                    reader.ReadStartElement("data");
-                    while (reader.IsStartElement("value"))
-                    {
-                        Dictionary<string, object> package_info = (Dictionary<string, object>)ParseValue(reader);
+                        var package_info = package_info_obj as Dictionary<string, object>;
+                        if (package_info == null)
+                        {
+                            request.Debug("search returned unexpected value in array");
+                            continue;
+                        }
                         PythonPackage package = new PythonPackage(package_info["name"].ToString());
                         package.version = package_info["version"].ToString();
                         package.summary = package_info["summary"].ToString();
@@ -96,15 +89,6 @@ namespace PythonProvider
                         if (request.IsCanceled)
                             break;
                     }
-                    if (request.IsCanceled)
-                        // Avoid exceptions when we cancel during package listing
-                        break;
-                    reader.ReadEndElement(); //data
-                    reader.ReadEndElement(); //array
-                    reader.ReadEndElement(); //value
-                    reader.ReadEndElement(); //param
-                    reader.ReadEndElement(); //params
-                    reader.ReadEndElement(); //methodResponse
                 }
             }
         }
@@ -129,6 +113,20 @@ namespace PythonProvider
             return result;
         }
 
+        private static List<object> ParseArray(XmlReader reader)
+        {
+            List<object> result = new List<object>();
+            reader.ReadStartElement("array");
+            reader.ReadStartElement("data");
+            while (reader.IsStartElement("value"))
+            {
+                result.Add(ParseValue(reader));
+            }
+            reader.ReadEndElement(); //data
+            reader.ReadEndElement(); //array
+            return result;
+        }
+
         private static object ParseValue(XmlReader reader)
         {
             object result;
@@ -137,15 +135,49 @@ namespace PythonProvider
             {
                 throw new Exception("unexpected xml");
             }
-            if (reader.Name == "string")
-                result = reader.ReadElementContentAsString();
-            else if (reader.Name == "int" || reader.Name == "i4")
-                result = reader.ReadElementContentAsInt();
-            else if (reader.Name == "struct")
-                result = ParseStruct(reader);
-            else
-                throw new Exception(string.Format("unhandled value type {0}", reader.Name));
+            switch (reader.Name)
+            {
+                case "string":
+                    result = reader.ReadElementContentAsString();
+                    break;
+                case "int":
+                case "i4":
+                    result = reader.ReadElementContentAsInt();
+                    break;
+                case "struct":
+                    result = ParseStruct(reader);
+                    break;
+                case "array":
+                    result = ParseArray(reader);
+                    break;
+                default:
+                    throw new Exception(string.Format("unhandled value type {0}", reader.Name));
+            }
             reader.ReadEndElement(); //value
+            return result;
+        }
+
+        private static object ParseResponse(Stream stream, Request request)
+        {
+            XmlReader reader = XmlReader.Create(stream);
+            reader.ReadStartElement("methodResponse");
+            if (!reader.IsStartElement())
+            {
+                request.Debug("got unexpected xml-rpc response data");
+                return null;
+            }
+            if (reader.Name == "fault")
+            {
+                // FIXME: learn to parse these
+                request.Debug("got fault response from xml-rpc");
+                return null;
+            }
+            reader.ReadStartElement("params");
+            reader.ReadStartElement("param");
+            object result = ParseValue(reader);
+            reader.ReadEndElement(); //param
+            reader.ReadEndElement(); //params
+            reader.ReadEndElement(); //methodResponse
             return result;
         }
     }
