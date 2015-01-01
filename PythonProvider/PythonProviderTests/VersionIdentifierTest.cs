@@ -10,6 +10,10 @@ namespace PythonProviderTests
         static readonly string[] sorted_version_strings = {
                                                               "0",
                                                               "0.9",
+                                                              "1.0a0",
+                                                              "1.0a5",
+                                                              "1.0b2",
+                                                              "1.0rc1",
                                                               "1.0",
                                                               "1.1",
                                                               "1.1.1",
@@ -17,7 +21,15 @@ namespace PythonProviderTests
                                                               "2"
                                                           };
 
-        static readonly string[] string_normalizations = { "050.0.06", "50.0.6" };
+        static readonly string[] string_normalizations = {
+                                                             "050.0.06", "50.0.6",
+                                                             "1.0alpha2", "1.0a2",
+                                                             "1.0a", "1.0a0",
+                                                             "1.0beta", "1.0b0",
+                                                             "1.0c2", "1.0rc2",
+                                                             "1.0pre2", "1.0rc2",
+                                                             "1.0preview2", "1.0rc2"
+                                                         };
 
         [TestMethod]
         public void TestNormalization()
