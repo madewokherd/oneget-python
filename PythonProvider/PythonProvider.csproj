@@ -52,6 +52,7 @@
     <Compile Include="PythonPackage.cs" />
     <Compile Include="PythonProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="VersionIdentifier.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

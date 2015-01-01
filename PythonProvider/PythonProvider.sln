@@ -10,6 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{11D0F7
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PythonProviderTests", "PythonProviderTests\PythonProviderTests.csproj", "{3DB13542-7921-48C2-94E6-84958A7DBC63}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{B595EE14-F7EF-4E15-96BE-025C4731DBA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B595EE14-F7EF-4E15-96BE-025C4731DBA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B595EE14-F7EF-4E15-96BE-025C4731DBA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DB13542-7921-48C2-94E6-84958A7DBC63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DB13542-7921-48C2-94E6-84958A7DBC63}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DB13542-7921-48C2-94E6-84958A7DBC63}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DB13542-7921-48C2-94E6-84958A7DBC63}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
