@@ -31,6 +31,9 @@ namespace PythonProvider
         public bool is_devrelease;
         public int devrelease_version;
 
+        public bool is_localversion;
+        public string localversion_label;
+
         public VersionIdentifier(string version_string)
         {
             if (!ParseVersion(version_string))
@@ -162,6 +165,31 @@ namespace PythonProvider
                 }
             }
 
+            // up to 1 local version segment
+            if (pos + 1 < version_string.Length &&
+                version_string[pos] == '+')
+            {
+                pos++;
+
+                is_localversion = true;
+                localversion_label = version_string.Substring(pos);
+
+                for (int i = 0; i < localversion_label.Length; i++)
+                {
+                    char ch = localversion_label[i];
+                    if (!char.IsLetterOrDigit(ch) && ch != '.')
+                        return false;
+                }
+
+                if (localversion_label[0] == '.')
+                    return false;
+
+                if (localversion_label[localversion_label.Length - 1] == '.')
+                    return false;
+
+                pos = version_string.Length;
+            }
+
             if (pos != version_string.Length)
                 return false;
 
@@ -210,6 +238,12 @@ namespace PythonProvider
             {
                 result.Append(".dev");
                 result.Append(devrelease_version);
+            }
+
+            if (is_localversion)
+            {
+                result.Append("+");
+                result.Append(localversion_label);
             }
 
             return result.ToString();
