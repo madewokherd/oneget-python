@@ -68,6 +68,8 @@ namespace PythonProvider
         {
             int pos = 0;
 
+            version_string = version_string.Trim().ToLowerInvariant();
+
             if (string.IsNullOrWhiteSpace(version_string) || !char.IsDigit(version_string[0]))
                 return false;
 
