@@ -239,10 +239,16 @@ namespace PythonProvider
             }
 
             // up to 1 dev-release segment
-            if (pos + 3 < version_string.Length &&
-                version_string.Substring(pos, 4) == ".dev")
+            if (pos + 2 < version_string.Length &&
+                (version_string.Substring(pos, 3) == "dev" ||
+                 (pos + 3 < version_string.Length &&
+                  (version_string[pos] == '.' || version_string[pos] == '-' || version_string[pos] == '_') &&
+                  version_string.Substring(pos+1, 3) == "dev")))
             {
-                pos += 4;
+                if (version_string[pos] != 'd')
+                    pos++;
+
+                pos += 3;
 
                 is_devrelease = true;
 
