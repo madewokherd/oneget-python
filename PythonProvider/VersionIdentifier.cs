@@ -166,10 +166,16 @@ namespace PythonProvider
             }
 
             // up to 1 post-release segment
-            if (pos + 4 < version_string.Length &&
-                version_string.Substring(pos, 5) == ".post")
+            if (pos + 3 < version_string.Length &&
+                (version_string.Substring(pos, 4) == "post" ||
+                 (pos + 4 < version_string.Length &&
+                  (version_string[pos] == '.' || version_string[pos] == '-' || version_string[pos] == '_') &&
+                  version_string.Substring(pos+1, 4) == "post")))
             {
-                pos += 5;
+                if (version_string[pos] != 'p')
+                    pos++;
+
+                pos += 4;
 
                 is_postrelease = true;
 
