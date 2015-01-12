@@ -190,6 +190,37 @@ namespace PythonProvider
                     pos++;
                 }
             }
+            else if (pos < version_string.Length &&
+                     (version_string[pos] == 'r' ||
+                      (pos + 1 < version_string.Length && 
+                       (version_string[pos] == '-' || version_string[pos] == '.' || version_string[pos] == '_') &&
+                       version_string[pos+1] == 'r')))
+            {
+                // -r and -rev spellings
+                if (version_string[pos] == '-' || version_string[pos] == '.' || version_string[pos] == '_')
+                    pos++;
+
+                if (version_string[pos] == 'r')
+                    pos++;
+
+                if (pos + 1 < version_string.Length &&
+                    version_string[pos] == 'e' &&
+                    version_string[pos+1] == 'v')
+                    pos += 2;
+
+                is_postrelease = true;
+
+                postrelease_version = 0;
+                if (pos + 1 < version_string.Length &&
+                    (version_string[pos] == '-' || version_string[pos] == '.' || version_string[pos] == '_') &&
+                    char.IsDigit(version_string[pos + 1]))
+                    pos++;
+                while (pos < version_string.Length && char.IsDigit(version_string[pos]))
+                {
+                    postrelease_version = postrelease_version * 10 + version_string[pos] - '0';
+                    pos++;
+                }
+            }
 
             // up to 1 dev-release segment
             if (pos + 3 < version_string.Length &&
