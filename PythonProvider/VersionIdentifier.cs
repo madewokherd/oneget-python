@@ -25,6 +25,9 @@ namespace PythonProvider
         public PrereleaseType prerelease_type;
         public int prerelease_version;
 
+        public bool is_postrelease;
+        public int postrelease_version;
+
         public VersionIdentifier(string version_string)
         {
             if (!ParseVersion(version_string))
@@ -124,6 +127,22 @@ namespace PythonProvider
                 prerelease_version = 0;
             }
 
+            // up to 1 post-release segment
+            if (pos + 4 < version_string.Length &&
+                version_string.Substring(pos, 5) == ".post")
+            {
+                pos += 5;
+
+                is_postrelease = true;
+
+                postrelease_version = 0;
+                while (pos < version_string.Length && char.IsDigit(version_string[pos]))
+                {
+                    postrelease_version = postrelease_version * 10 + version_string[pos] - '0';
+                    pos++;
+                }
+            }
+
             if (pos != version_string.Length)
                 return false;
 
@@ -160,6 +179,12 @@ namespace PythonProvider
                         break;
                 }
                 result.Append(prerelease_version);
+            }
+
+            if (is_postrelease)
+            {
+                result.Append(".post");
+                result.Append(postrelease_version);
             }
 
             return result.ToString();

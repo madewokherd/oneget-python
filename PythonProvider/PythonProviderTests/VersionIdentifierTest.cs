@@ -11,10 +11,14 @@ namespace PythonProviderTests
                                                               "0",
                                                               "0.9",
                                                               "1.0a0",
+                                                              "1.0a0.post4",
                                                               "1.0a5",
                                                               "1.0b2",
+                                                              "1.0b2.post3",
                                                               "1.0rc1",
+                                                              "1.0rc1.post2",
                                                               "1.0",
+                                                              "1.0.post1",
                                                               "1.1",
                                                               "1.1.1",
                                                               "1.2",
@@ -28,7 +32,8 @@ namespace PythonProviderTests
                                                              "1.0beta", "1.0b0",
                                                              "1.0c2", "1.0rc2",
                                                              "1.0pre2", "1.0rc2",
-                                                             "1.0preview2", "1.0rc2"
+                                                             "1.0preview2", "1.0rc2",
+                                                             "1.0.post", "1.0.post0"
                                                          };
 
         [TestMethod]
