@@ -14,7 +14,12 @@ namespace PythonProviderTests
                                                               "1.0a0.dev2",
                                                               "1.0a0",
                                                               "1.0a0.post4.dev1",
-                                                              "1.0a0.post4.dev1+postrelease",
+                                                              "1.0a0.post4.dev1+postrelease10",
+                                                              "1.0a0.post4.dev1+postrelease3",
+                                                              "1.0a0.post4.dev1+postrelease3.2",
+                                                              "1.0a0.post4.dev1+2",
+                                                              "1.0a0.post4.dev1+2.3",
+                                                              "1.0a0.post4.dev1+2.10",
                                                               "1.0a0.post4",
                                                               "1.0a5",
                                                               "1.0b2.dev3",
@@ -26,7 +31,7 @@ namespace PythonProviderTests
                                                               "1.0rc1.post2.dev6",
                                                               "1.0rc1.post2",
                                                               "1.0",
-                                                              "1.0+1.0is2.01",
+                                                              "1.0+1.0is02.0",
                                                               "1.0.post1.dev7",
                                                               "1.0.post1",
                                                               "1.1",
@@ -84,6 +89,35 @@ namespace PythonProviderTests
                 Assert.IsNull(ver.invalid_string, "version string {0} rejected by parser", string_normalizations[i]);
                 Assert.AreEqual(ver.ToString(), string_normalizations[i + 1], "expected {0} to normalize to {1}", string_normalizations[i], string_normalizations[i + 1]);
             }
+        }
+
+        [TestMethod]
+        public void TestComparison()
+        {
+            VersionIdentifier[] identifiers = new VersionIdentifier[sorted_version_strings.Length];
+            int res;
+
+            for (int i=0; i<identifiers.Length; i++)
+            {
+                identifiers[i] = new VersionIdentifier(sorted_version_strings[i]);
+            }
+
+            for (int i=0; i<identifiers.Length; i++)
+            {
+                for (int j=0; j<identifiers.Length; j++)
+                {
+                    res = identifiers[i].Compare(identifiers[j]);
+                    if (i < j)
+                        Assert.AreEqual(-1, res, "expected {0} < {1}, got {2}", sorted_version_strings[i], sorted_version_strings[j], res);
+                    else if (i == j)
+                        Assert.AreEqual(0, res, "expected {0} = {1}, got {2}", sorted_version_strings[i], sorted_version_strings[j], res);
+                    else
+                        Assert.AreEqual(1, res, "expected {0} > {1}, got {2}", sorted_version_strings[i], sorted_version_strings[j], res);
+                }
+            }
+
+            res = new VersionIdentifier("1.0").Compare("1.0.0");
+            Assert.AreEqual(0, res, "expected 1.0 = 1.0.0, got {0}", res);
         }
     }
 }

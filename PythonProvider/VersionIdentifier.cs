@@ -34,7 +34,7 @@ namespace PythonProvider
         public int devrelease_version;
 
         public bool is_localversion;
-        public string localversion_label;
+        public object[] localversion_segments;
 
         public VersionIdentifier(string version_string)
         {
@@ -274,7 +274,7 @@ namespace PythonProvider
                 pos++;
 
                 is_localversion = true;
-                localversion_label = version_string.Substring(pos).Replace('-', '.').Replace('_', '.');
+                string localversion_label = version_string.Substring(pos).Replace('-', '.').Replace('_', '.');
 
                 for (int i = 0; i < localversion_label.Length; i++)
                 {
@@ -289,6 +289,28 @@ namespace PythonProvider
                 if (localversion_label[localversion_label.Length - 1] == '.')
                     return false;
 
+                string[] string_segments = localversion_label.Split('.');
+
+                localversion_segments = new object[string_segments.Length];
+
+                for (int i = 0; i < localversion_segments.Length; i++)
+                {
+                    string segment = (string)string_segments[i];
+                    bool is_int=true;
+                    for (int j=0; j<segment.Length; j++)
+                    {
+                        if (!char.IsDigit(segment[j]))
+                        {
+                            is_int = false;
+                            break;
+                        }
+                    }
+                    if (is_int)
+                        localversion_segments[i] = int.Parse(segment);
+                    else
+                        localversion_segments[i] = segment;
+                }
+
                 pos = version_string.Length;
             }
 
@@ -296,6 +318,143 @@ namespace PythonProvider
                 return false;
 
             return true;
+        }
+
+        private int cmp(int a, int b)
+        {
+            if (a < b)
+                return -1;
+            else if (a == b)
+                return 0;
+            else
+                return 1;
+        }
+
+        private int cmp(string a, string b)
+        {
+            return string.Compare(a, b, StringComparison.InvariantCulture);
+        }
+
+        private bool is_plain_devrelease()
+        {
+            return is_devrelease && prerelease_type == PrereleaseType.Final && !is_postrelease;
+        }
+
+        public int Compare(VersionIdentifier other)
+        {
+            int res = cmp(epoch, other.epoch);
+
+            if (res != 0)
+                return res;
+
+            int common_segments = release.Length < other.release.Length ? release.Length : other.release.Length;
+
+            for (int i=0; i<common_segments; i++)
+            {
+                res = cmp(release[i], other.release[i]);
+                if (res != 0)
+                    return res;
+            }
+
+            if (common_segments < release.Length)
+            {
+                for (int i = common_segments; i < release.Length; i++)
+                    if (release[i] != 0)
+                        return 1;
+            }
+
+            if (common_segments < other.release.Length)
+            {
+                for (int i = common_segments; i < other.release.Length; i++)
+                    if (other.release[i] != 0)
+                        return -1;
+            }
+
+            if (is_plain_devrelease() && !other.is_plain_devrelease())
+                return -1;
+
+            if (!is_plain_devrelease() && other.is_plain_devrelease())
+                return 1;
+
+            res = cmp((int)prerelease_type, (int)other.prerelease_type);
+            if (res != 0)
+                return res;
+
+            res = cmp(prerelease_version, other.prerelease_version);
+            if (res != 0)
+                return res;
+
+            if (is_postrelease && !other.is_postrelease)
+                return 1;
+
+            if (!is_postrelease && other.is_postrelease)
+                return -1;
+
+            res = cmp(postrelease_version, other.postrelease_version);
+            if (res != 0)
+                return res;
+
+            if (is_devrelease && !other.is_devrelease)
+                return -1;
+
+            if (!is_devrelease && other.is_devrelease)
+                return 1;
+
+            res = cmp(devrelease_version, other.devrelease_version);
+            if (res != 0)
+                return res;
+
+            if (is_localversion && !other.is_localversion)
+                return 1;
+
+            if (!is_localversion && other.is_localversion)
+                return -1;
+
+            if (is_localversion)
+            {
+                common_segments = localversion_segments.Length < other.localversion_segments.Length ? localversion_segments.Length : other.localversion_segments.Length;
+
+                for (int i=0; i<common_segments; i++)
+                {
+                    string this_str = localversion_segments[i] as string;
+                    if (this_str != null)
+                    {
+                        string other_str = other.localversion_segments[i] as string;
+                        if (other_str == null)
+                            // any string < any int
+                            return -1;
+                        else
+                        {
+                            res = cmp(this_str, other_str);
+                            if (res != 0)
+                                return res;
+                        }
+                    }
+                    else
+                    {
+                        int this_int = (int)localversion_segments[i];
+                        string other_string = other.localversion_segments[i] as string;
+                        if (other_string != null)
+                            // any int > any string
+                            return 1;
+                        else
+                        {
+                            res = cmp(this_int, (int)other.localversion_segments[i]);
+                            if (res != 0)
+                                return res;
+                        }
+                    }
+                }
+
+                res = cmp(localversion_segments.Length, other.localversion_segments.Length);
+            }
+
+            return res;
+        }
+
+        public int Compare(string other)
+        {
+            return Compare(new VersionIdentifier(other));
         }
 
         public override string ToString()
@@ -351,7 +510,12 @@ namespace PythonProvider
             if (is_localversion)
             {
                 result.Append("+");
-                result.Append(localversion_label);
+                result.Append(localversion_segments[0]);
+                for (int i = 1; i < localversion_segments.Length; i++)
+                {
+                    result.Append(".");
+                    result.Append(localversion_segments[i]);
+                }
             }
 
             return result.ToString();
