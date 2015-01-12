@@ -221,6 +221,22 @@ namespace PythonProvider
                     pos++;
                 }
             }
+            else if (pos + 1 < version_string.Length &&
+                     version_string[pos] == '-' &&
+                     char.IsDigit(version_string[pos+1]))
+            {
+                // -N spelling
+                pos++;
+
+                is_postrelease = true;
+
+                postrelease_version = 0;
+                while (pos < version_string.Length && char.IsDigit(version_string[pos]))
+                {
+                    postrelease_version = postrelease_version * 10 + version_string[pos] - '0';
+                    pos++;
+                }
+            }
 
             // up to 1 dev-release segment
             if (pos + 3 < version_string.Length &&

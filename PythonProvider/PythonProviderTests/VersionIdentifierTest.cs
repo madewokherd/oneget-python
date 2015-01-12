@@ -58,7 +58,8 @@ namespace PythonProviderTests
                                                              "1.0_post", "1.0.post0",
                                                              "1.0-post2", "1.0.post2",
                                                              "1.0r2", "1.0.post2",
-                                                             "1.0-rev_2", "1.0.post2"
+                                                             "1.0-rev_2", "1.0.post2",
+                                                             "1.0-1", "1.0.post1"
                                                          };
 
         [TestMethod]
