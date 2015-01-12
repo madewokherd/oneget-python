@@ -10,6 +10,8 @@ namespace PythonProvider
     {
         // see: https://www.python.org/dev/peps/pep-0440/
 
+        public int epoch;
+
         public int[] release;
 
         public string invalid_string;
@@ -65,6 +67,22 @@ namespace PythonProvider
         private bool ParseVersion(string version_string)
         {
             int pos = 0;
+
+            if (string.IsNullOrWhiteSpace(version_string) || !char.IsDigit(version_string[0]))
+                return false;
+
+            // up to 1 epoch segment
+            for (int i=1; i<version_string.Length; i++)
+            {
+                if (version_string[i] == '!')
+                {
+                    epoch = int.Parse(version_string.Substring(0, i));
+                    pos = i + 1;
+                    break;
+                }
+                else if (!char.IsDigit(version_string[i]))
+                    break;
+            }
 
             // release part
             LinkedList<int> release_components = new LinkedList<int>();
@@ -202,6 +220,12 @@ namespace PythonProvider
                 return invalid_string;
 
             StringBuilder result = new StringBuilder();
+
+            if (epoch != 0)
+            {
+                result.Append(epoch);
+                result.Append("!");
+            }
 
             result.Append(release[0]);
 

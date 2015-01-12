@@ -32,7 +32,8 @@ namespace PythonProviderTests
                                                               "1.1",
                                                               "1.1.1",
                                                               "1.2",
-                                                              "2"
+                                                              "2",
+                                                              "1!0.5"
                                                           };
 
         static readonly string[] string_normalizations = {
@@ -44,7 +45,8 @@ namespace PythonProviderTests
                                                              "1.0pre2", "1.0rc2",
                                                              "1.0preview2", "1.0rc2",
                                                              "1.0.post", "1.0.post0",
-                                                             "1.0.post.dev", "1.0.post0.dev0"
+                                                             "1.0.post.dev", "1.0.post0.dev0",
+                                                             "0!1", "1"
                                                          };
 
         [TestMethod]
