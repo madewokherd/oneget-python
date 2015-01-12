@@ -26,7 +26,7 @@ namespace PythonProviderTests
                                                               "1.0rc1.post2.dev6",
                                                               "1.0rc1.post2",
                                                               "1.0",
-                                                              "1.0+1.0is2.0",
+                                                              "1.0+1.0is2.01",
                                                               "1.0.post1.dev7",
                                                               "1.0.post1",
                                                               "1.1",
@@ -47,7 +47,8 @@ namespace PythonProviderTests
                                                              "1.0.post", "1.0.post0",
                                                              "1.0.post.dev", "1.0.post0.dev0",
                                                              "0!1", "1",
-                                                             "\t1.0RC1 ", "1.0rc1"
+                                                             "\t1.0RC1 ", "1.0rc1",
+                                                             "01!2", "1!2"
                                                          };
 
         [TestMethod]
