@@ -70,6 +70,12 @@ namespace PythonProvider
 
             version_string = version_string.Trim().ToLowerInvariant();
 
+            // trim 'v' from the start
+            if (version_string[0] == 'v' && version_string.Length >= 2)
+            {
+                version_string = version_string.Substring(1);
+            }
+
             if (string.IsNullOrWhiteSpace(version_string) || !char.IsDigit(version_string[0]))
                 return false;
 
