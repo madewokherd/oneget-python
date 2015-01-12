@@ -48,7 +48,10 @@ namespace PythonProviderTests
                                                              "1.0.post.dev", "1.0.post0.dev0",
                                                              "0!1", "1",
                                                              "\t1.0RC1 ", "1.0rc1",
-                                                             "01!2", "1!2"
+                                                             "01!2", "1!2",
+                                                             "1.0.a0010", "1.0a10",
+                                                             "1.2-b", "1.2b0",
+                                                             "1.2_c0", "1.2rc0"
                                                          };
 
         [TestMethod]
@@ -65,7 +68,7 @@ namespace PythonProviderTests
             for (i = 0; i < string_normalizations.Length; i+=2)
             {
                 VersionIdentifier ver = new VersionIdentifier(string_normalizations[i]);
-                Assert.IsNull(ver.invalid_string, "version string {0} rejected by parser", string_normalizations[0]);
+                Assert.IsNull(ver.invalid_string, "version string {0} rejected by parser", string_normalizations[i]);
                 Assert.AreEqual(ver.ToString(), string_normalizations[i + 1], "expected {0} to normalize to {1}", string_normalizations[i], string_normalizations[i + 1]);
             }
         }

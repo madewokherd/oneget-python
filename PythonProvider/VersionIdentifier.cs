@@ -121,16 +121,24 @@ namespace PythonProvider
             release = release_components.ToArray();
 
             // up to 1 prerelease segment
-            if (pos < version_string.Length && char.IsLetter(version_string[pos]))
+            if ((pos < version_string.Length && char.IsLetter(version_string[pos])) ||
+                (pos + 1 < version_string.Length && 
+                 (version_string[pos] == '.' || version_string[pos] == '-' || version_string[pos] == '_') &&
+                 char.IsLetter(version_string[pos+1])))
             {
                 int prev_pos = pos;
+
+                if (!char.IsLetter(version_string[pos]))
+                    pos++;
+
+                int id_start = pos;
 
                 while (pos < version_string.Length && char.IsLetter(version_string[pos]))
                 {
                     pos++;
                 }
 
-                string prerelease_identifier = version_string.Substring(prev_pos, pos - prev_pos);
+                string prerelease_identifier = version_string.Substring(id_start, pos - id_start);
                 prerelease_type = GetPrereleaseType(prerelease_identifier);
                 if (prerelease_type == PrereleaseType.Final)
                 {
