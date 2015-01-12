@@ -268,7 +268,7 @@ namespace PythonProvider
                 pos++;
 
                 is_localversion = true;
-                localversion_label = version_string.Substring(pos);
+                localversion_label = version_string.Substring(pos).Replace('-', '.').Replace('_', '.');
 
                 for (int i = 0; i < localversion_label.Length; i++)
                 {

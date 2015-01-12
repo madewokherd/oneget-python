@@ -62,7 +62,8 @@ namespace PythonProviderTests
                                                              "1.0-1", "1.0.post1",
                                                              "1.0dev2", "1.0.dev2",
                                                              "1.0_dev3", "1.0.dev3",
-                                                             "1.0-dev3", "1.0.dev3"
+                                                             "1.0-dev3", "1.0.dev3",
+                                                             "1.0+1-0_1.1", "1.0+1.0.1.1"
                                                          };
 
         [TestMethod]
