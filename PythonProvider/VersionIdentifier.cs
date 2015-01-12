@@ -174,6 +174,10 @@ namespace PythonProvider
                 is_postrelease = true;
 
                 postrelease_version = 0;
+                if (pos + 1 < version_string.Length &&
+                    (version_string[pos] == '-' || version_string[pos] == '.' || version_string[pos] == '_') &&
+                    char.IsDigit(version_string[pos + 1]))
+                    pos++;
                 while (pos < version_string.Length && char.IsDigit(version_string[pos]))
                 {
                     postrelease_version = postrelease_version * 10 + version_string[pos] - '0';
@@ -190,6 +194,7 @@ namespace PythonProvider
                 is_devrelease = true;
 
                 devrelease_version = 0;
+                // PEP440 doesn't allow a separator here.
                 while (pos < version_string.Length && char.IsDigit(version_string[pos]))
                 {
                     devrelease_version = devrelease_version * 10 + version_string[pos] - '0';

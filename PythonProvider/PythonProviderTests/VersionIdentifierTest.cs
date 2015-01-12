@@ -52,7 +52,8 @@ namespace PythonProviderTests
                                                              "1.0.a0010", "1.0a10",
                                                              "1.2-b", "1.2b0",
                                                              "1.2_c0", "1.2rc0",
-                                                             "2.1rc-5", "2.1rc5"
+                                                             "2.1rc-5", "2.1rc5",
+                                                             "1.0.post-5", "1.0.post5"
                                                          };
 
         [TestMethod]
