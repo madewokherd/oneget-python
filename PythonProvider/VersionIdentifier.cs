@@ -148,6 +148,10 @@ namespace PythonProvider
                 else
                 {
                     prerelease_version = 0;
+                    if (pos + 1 < version_string.Length && 
+                        (version_string[pos] == '-' || version_string[pos] == '.' || version_string[pos] == '_') &&
+                        char.IsDigit(version_string[pos + 1]))
+                        pos++;
                     while (pos < version_string.Length && char.IsDigit(version_string[pos]))
                     {
                         prerelease_version = prerelease_version * 10 + version_string[pos] - '0';
