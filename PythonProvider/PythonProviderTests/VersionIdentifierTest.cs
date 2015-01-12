@@ -10,14 +10,22 @@ namespace PythonProviderTests
         static readonly string[] sorted_version_strings = {
                                                               "0",
                                                               "0.9",
+                                                              "1.0.dev23",
+                                                              "1.0a0.dev2",
                                                               "1.0a0",
+                                                              "1.0a0.post4.dev1",
                                                               "1.0a0.post4",
                                                               "1.0a5",
+                                                              "1.0b2.dev3",
                                                               "1.0b2",
+                                                              "1.0b2.post3.dev4",
                                                               "1.0b2.post3",
+                                                              "1.0rc1.dev5",
                                                               "1.0rc1",
+                                                              "1.0rc1.post2.dev6",
                                                               "1.0rc1.post2",
                                                               "1.0",
+                                                              "1.0.post1.dev7",
                                                               "1.0.post1",
                                                               "1.1",
                                                               "1.1.1",
@@ -33,7 +41,8 @@ namespace PythonProviderTests
                                                              "1.0c2", "1.0rc2",
                                                              "1.0pre2", "1.0rc2",
                                                              "1.0preview2", "1.0rc2",
-                                                             "1.0.post", "1.0.post0"
+                                                             "1.0.post", "1.0.post0",
+                                                             "1.0.post.dev", "1.0.post0.dev0"
                                                          };
 
         [TestMethod]
