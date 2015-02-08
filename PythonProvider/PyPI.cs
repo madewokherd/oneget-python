@@ -105,6 +105,7 @@ namespace PythonProvider
                         string package_name = package_info["name"].ToString();
                         string package_current_version = package_info["version"].ToString();
                         string package_version = null;
+                        request.Debug("considering {0} {1}", package_name, package_current_version);
                         var detailed_info = GetDetailedPackageInfo(source, package_name, package_current_version);
                         var uri_listing = detailed_info.GetValue("urls") as JArray;
                         if (uri_listing != null && uri_listing.Count != 0 &&
@@ -113,6 +114,7 @@ namespace PythonProvider
                             (maximum == null || maximum.Compare(package_current_version) >= 0))
                         {
                             package_version = package_current_version;
+                            request.Debug("using that version");
                         }
                         else
                         {
@@ -140,6 +142,10 @@ namespace PythonProvider
                                     package_version = release.Key;
                                 }
                             }
+                            if (package_version != null)
+                                request.Debug("using version {0}", package_version);
+                            else
+                                request.Debug("no matching version");
                         }
                         if (package_version == null)
                             continue;
