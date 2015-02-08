@@ -56,7 +56,9 @@
     <Compile Include="VersionIdentifier.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="oneget.manifest" />
+    <None Include="oneget.manifest">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
@@ -67,13 +69,6 @@ for /f "delims=" %25%25a in ('powershell "$p = ((Get-ItemProperty -Path HKCU:\So
 :Run the tool to add the manifest to the binary.
 "%25MTEXE%25" -manifest $(ProjectDir)oneget.manifest -outputresource:$(TargetPath);#101</PostBuildEvent>
   </PropertyGroup>
-  <Import Project="packages\ILRepackTask.1.0.8\build\net40\ILRepackTask.targets" Condition="Exists('packages\ILRepackTask.1.0.8\build\net40\ILRepackTask.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('packages\ILRepackTask.1.0.8\build\net40\ILRepackTask.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\ILRepackTask.1.0.8\build\net40\ILRepackTask.targets'))" />
-  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
