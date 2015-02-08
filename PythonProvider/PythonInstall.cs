@@ -11,7 +11,7 @@ namespace PythonProvider
     {
         public string install_path;
         public string exe_path;
-        public string python_version;
+        public VersionIdentifier python_version;
 
         private PythonInstall()
         {
@@ -28,18 +28,51 @@ namespace PythonProvider
             return proc.StandardOutput.ReadToEnd();
         }
 
-        private string GetPythonVersion()
+        private VersionIdentifier GetPythonVersion()
         {
-            return QueryPython("-c \"import sys;sys.stdout.write(str(sys.version_info[0])+'.'+str(sys.version_info[1])+'.'+str(sys.version_info[2]))\"");
-        }
+            string version_str = QueryPython("-c \"import sys;sys.stdout.write('.'.join(str(x) for x in sys.version_info))\"");
+            string[] version_parts = version_str.Split(new char[]{'.'}, 6);
 
-        public bool MatchesVersion(string version)
-        {
-            if (!version.EndsWith("."))
+            if (version_parts.Length != 5)
+                return null;
+
+            VersionIdentifier result = new VersionIdentifier("0.0.0");
+
+            int part;
+
+            if (!int.TryParse(version_parts[0], out part) || part < 0)
+                return null;
+            result.release[0] = part;
+            if (!int.TryParse(version_parts[1], out part) || part < 0)
+                return null;
+            result.release[1] = part;
+            if (!int.TryParse(version_parts[2], out part) || part < 0)
+                return null;
+            result.release[2] = part;
+
+            switch (version_parts[3])
             {
-                version = version + ".";
+                case "alpha":
+                    result.prerelease_type = VersionIdentifier.PrereleaseType.Alpha;
+                    break;
+                case "beta":
+                    result.prerelease_type = VersionIdentifier.PrereleaseType.Beta;
+                    break;
+                case "candidate":
+                    result.prerelease_type = VersionIdentifier.PrereleaseType.ReleaseCandidate;
+                    break;
+                case "final":
+                    result.prerelease_type = VersionIdentifier.PrereleaseType.Final;
+                    break;
+                default:
+                    return null;
             }
-            return python_version.StartsWith(version);
+
+            if (!int.TryParse(version_parts[4], out part) || part < 0)
+                return null;
+            result.prerelease_version = part;
+
+            return result;
         }
 
         public static PythonInstall FromPath(string installpath, Request request)
@@ -52,12 +85,16 @@ namespace PythonProvider
                 if (File.Exists(result.exe_path))
                 {
                     result.python_version = result.GetPythonVersion();
-                    if (string.IsNullOrEmpty(result.python_version))
+                    if (result.python_version == null)
                         return null;
                 }
-                string requested_version = request.GetOptionValue("PythonVersion");
-                if (!string.IsNullOrEmpty(requested_version) && !result.MatchesVersion(requested_version))
-                    return null;
+                string requested_version_str = request.GetOptionValue("PythonVersion");
+                if (!string.IsNullOrEmpty(requested_version_str))
+                {
+                    VersionIdentifier requested_version = new VersionIdentifier(requested_version_str);
+                    if (!requested_version.IsPrefix(result.python_version))
+                        return null;
+                }
                 return result;
             }
             catch
