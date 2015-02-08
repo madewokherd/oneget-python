@@ -43,8 +43,17 @@ namespace PythonProvider
             return JObject.Parse(json);
         }
 
-        public static IEnumerable<PythonPackage> Search(string name, Request request)
+        public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
         {
+            VersionIdentifier required=null, minimum=null, maximum=null;
+
+            if (!string.IsNullOrWhiteSpace(requiredVersion))
+                required = new VersionIdentifier(requiredVersion);
+            if (!string.IsNullOrWhiteSpace(minimumVersion))
+                minimum = new VersionIdentifier(minimumVersion);
+            if (!string.IsNullOrWhiteSpace(maximumVersion))
+                maximum = new VersionIdentifier(maximumVersion);
+
             MemoryStream call_ms = new MemoryStream();
             XmlWriter writer = XmlWriter.Create(call_ms);
             writer.WriteStartElement("methodCall");
@@ -95,15 +104,47 @@ namespace PythonProvider
                         }
                         string package_name = package_info["name"].ToString();
                         string package_current_version = package_info["version"].ToString();
+                        string package_version = null;
                         var detailed_info = GetDetailedPackageInfo(source, package_name, package_current_version);
                         var uri_listing = detailed_info.GetValue("urls") as JArray;
-                        if (uri_listing == null || uri_listing.Count == 0)
+                        if (uri_listing != null && uri_listing.Count != 0 &&
+                            (required == null || required.Compare(package_current_version) == 0) &&
+                            (minimum == null || minimum.Compare(package_current_version) <= 0) &&
+                            (maximum == null || maximum.Compare(package_current_version) >= 0))
                         {
-                            request.Debug("package {0} current version has no urls", package_name);
-                            continue;
+                            package_version = package_current_version;
                         }
+                        else
+                        {
+                            var release_listing = detailed_info.GetValue("releases") as JObject;
+                            if (release_listing == null)
+                                continue;
+                            VersionIdentifier best_version_id = null;
+                            foreach (var release in release_listing)
+                            {
+                                VersionIdentifier candidate_version = new VersionIdentifier(release.Key);
+                                var uris = release.Value as JArray;
+                                if (uris == null || uris.Count == 0)
+                                    continue;
+                                if (required != null && required.Compare(candidate_version) != 0)
+                                    continue;
+                                if (minimum != null && minimum.Compare(candidate_version) > 0)
+                                    continue;
+                                if (maximum != null && maximum.Compare(candidate_version) < 0)
+                                    continue;
+                                if (best_version_id == null ||
+                                    (best_version_id.IsPrerelease && !candidate_version.IsPrerelease) ||
+                                    best_version_id.Compare(candidate_version) < 0)
+                                {
+                                    best_version_id = candidate_version;
+                                    package_version = release.Key;
+                                }
+                            }
+                        }
+                        if (package_version == null)
+                            continue;
                         PythonPackage package = new PythonPackage(package_name);
-                        package.version = package_current_version;
+                        package.version = package_version;
                         package.summary = package_info["summary"].ToString();
                         package.source = source.Item1;
                         package.search_key = name;

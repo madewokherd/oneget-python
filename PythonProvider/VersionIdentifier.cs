@@ -64,6 +64,14 @@ namespace PythonProvider
             }
         }
 
+        public bool IsPrerelease
+        {
+            get
+            {
+                return prerelease_type != PrereleaseType.Final || is_devrelease;
+            }
+        }
+
         private bool ParseVersion(string version_string)
         {
             int pos = 0;

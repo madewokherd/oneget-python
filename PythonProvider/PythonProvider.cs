@@ -72,11 +72,8 @@ namespace PythonProvider
         public void FindPackage(string name, string requiredVersion, string minimumVersion, string maximumVersion, int id, Request request)
         {
             request.Debug("Calling '{0}::FindPackage'", ProviderName);
-            foreach (var package in PyPI.Search(name, request))
+            foreach (var package in PyPI.Search(name, requiredVersion, minimumVersion, maximumVersion, request))
             {
-                if (!string.IsNullOrEmpty(requiredVersion) && package.version != requiredVersion)
-                    continue;
-                // FIXME: Do version comparison with minimumVersion/maximumVersion
                 package.YieldSelf(request);
             }
         }
