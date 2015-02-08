@@ -457,6 +457,25 @@ namespace PythonProvider
             return Compare(new VersionIdentifier(other));
         }
 
+        public bool IsPrefix(VersionIdentifier other)
+        {
+            if (epoch != other.epoch)
+                return false;
+
+            for (int i=0; i<release.Length; i++)
+            {
+                if ((other.release.Length > i ? other.release[i] : 0) != release[i])
+                    return false;
+            }
+
+            return true;
+        }
+
+        public bool IsPrefix(string other)
+        {
+            return IsPrefix(new VersionIdentifier(other));
+        }
+
         public override string ToString()
         {
             if (invalid_string != null)

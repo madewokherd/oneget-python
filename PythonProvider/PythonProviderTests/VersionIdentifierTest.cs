@@ -119,5 +119,26 @@ namespace PythonProviderTests
             res = new VersionIdentifier("1.0").Compare("1.0.0");
             Assert.AreEqual(0, res, "expected 1.0 = 1.0.0, got {0}", res);
         }
+
+        [TestMethod]
+        public void TestPrefix()
+        {
+            VersionIdentifier v = new VersionIdentifier("1.0");
+
+            Assert.IsTrue(v.IsPrefix("1.0.0"));
+            Assert.IsTrue(v.IsPrefix("1.0.1"));
+            Assert.IsTrue(v.IsPrefix("1.0a2"));
+            Assert.IsTrue(v.IsPrefix("1"));
+            Assert.IsFalse(v.IsPrefix("1.1"));
+            Assert.IsFalse(v.IsPrefix("2:1.0"));
+            Assert.IsFalse(v.IsPrefix("2.0"));
+
+            v = new VersionIdentifier("1.0.1");
+
+            Assert.IsTrue(v.IsPrefix("1.0.1"));
+            Assert.IsTrue(v.IsPrefix("1.0.1post2"));
+            Assert.IsTrue(v.IsPrefix("1.0.1dev2"));
+            Assert.IsFalse(v.IsPrefix("1.0"));
+        }
     }
 }
