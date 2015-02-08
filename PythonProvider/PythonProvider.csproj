@@ -11,7 +11,7 @@
     <AssemblyName>PythonProvider</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <NuGetPackageImportStamp>5650c428</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>f2a38f60</NuGetPackageImportStamp>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -36,9 +36,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>packages\Newtonsoft.Json.6.0.8\lib\net40\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="OneGet.ProviderSDK">
-      <HintPath>..\lib\OneGet.ProviderSDK.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -53,15 +50,22 @@
     <Compile Include="PythonPackage.cs" />
     <Compile Include="PythonProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Sdk\Constants.cs" />
+    <Compile Include="Sdk\ErrorCategory.cs" />
+    <Compile Include="Sdk\Request.cs" />
     <Compile Include="VersionIdentifier.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="oneget.manifest" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>:Locate MT.EXE Tool:
+for /f "delims=" %25%25a in ('powershell "$p = ((Get-ItemProperty -Path HKCU:\Software\OneGet\tools\MT.EXE -Name Path -ea 0).Path) ;  if( -not $p ) { $p = ((dir ${env:ProgramFiles(x86)} -recurse -ea 0|  where -property name -eq mt.exe | select -first 1 ).FullName) ;    $null = mkdir -Path HKCU:\Software\OneGet\tools\MT.EXE -Force ;    $null = New-ItemProperty -Path HKCU:\Software\OneGet\tools\MT.EXE -Name Path -Value $p -force } ; $p"') do @set MTEXE=%25%25a
+
+:Run the tool to add the manifest to the binary.
+"%25MTEXE%25" -manifest $(ProjectDir)oneget.manifest -outputresource:$(TargetPath);#101</PostBuildEvent>
   </PropertyGroup>
   <Import Project="packages\ILRepackTask.1.0.8\build\net40\ILRepackTask.targets" Condition="Exists('packages\ILRepackTask.1.0.8\build\net40\ILRepackTask.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

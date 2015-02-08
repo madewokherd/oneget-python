@@ -3,7 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
-using OneGet.ProviderSDK;
+using OneGet.Sdk;
 
 namespace PythonProvider
 {
@@ -98,7 +98,7 @@ namespace PythonProvider
         {
             List<PythonInstall> result = new List<PythonInstall>();
             string requested_location = request.GetOptionValue("PythonLocation");
-            if (!requested_location.IsEmptyOrNull())
+            if (!string.IsNullOrEmpty(requested_location))
             {
                 PythonInstall install = FromPath(requested_location, request);
                 if (install != null)

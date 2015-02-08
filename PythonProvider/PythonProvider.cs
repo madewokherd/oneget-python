@@ -3,27 +3,17 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
-using OneGet.ProviderSDK;
+using OneGet.Sdk;
 
 namespace PythonProvider
 {
     public class PythonProvider
     {
         const string ProviderName = "Python";
-        
-        public void InitializeProvider(object requestObject)
+
+        public void InitializeProvider(Request request)
         {
-            using (var request = requestObject.As<Request>())
-            {
-                try
-                {
-                    request.Debug("Calling '{0}::InitializeProvider'", ProviderName);
-                }
-                catch (Exception e)
-                {
-                    request.Debug(string.Format("Unexpected Exception thrown in '{0}::InitializeProvider' -- {1}\\{2}\r\n{3}"), ProviderName, e.GetType().Name, e.Message, e.StackTrace);
-                }
-            }
+            request.Debug("Calling '{0}::InitializeProvider'", ProviderName);
         }
 
         public string GetPackageProviderName()
@@ -31,31 +21,26 @@ namespace PythonProvider
             return ProviderName;
         }
 
-        public void GetDynamicOptions(string category, object requestObject)
+        public void OnUnhandledException(string methodName, Exception exception)
         {
-            using (var request = requestObject.As<Request>())
+            Console.Error.WriteLine("Unexpected Exception thrown in '{0}::{1}' -- {2}\\{3}\r\n{4}", ProviderName, methodName, exception.GetType().Name, exception.Message, exception.StackTrace);
+        }
+
+        public void GetDynamicOptions(string category, Request request)
+        {
+            request.Debug("Calling '{0}::GetDynamicOptions'", ProviderName);
+            switch ((category ?? "").ToLowerInvariant())
             {
-                try
-                {
-                    request.Debug("Calling '{0}::GetDynamicOptions'", ProviderName);
-                    switch ((category ?? "").ToLowerInvariant())
-                    {
-                        case "install":
-                            request.YieldDynamicOption("PythonVersion", "String", false);
-                            request.YieldDynamicOption("PythonLocation", "Folder", false);
-                            break;
-                        case "provider":
-                            break;
-                        case "source":
-                            break;
-                        case "package":
-                            break;
-                    }
-                }
-                catch (Exception e)
-                {
-                    request.Debug(string.Format("Unexpected Exception thrown in '{0}::GetDynamicOptions' -- {1}\\{2}\r\n{3}"), ProviderName, e.GetType().Name, e.Message, e.StackTrace);
-                }
+                case "install":
+                    request.YieldDynamicOption("PythonVersion", "String", false);
+                    request.YieldDynamicOption("PythonLocation", "Folder", false);
+                    break;
+                case "provider":
+                    break;
+                case "source":
+                    break;
+                case "package":
+                    break;
             }
         }
 
@@ -71,48 +56,29 @@ namespace PythonProvider
             }
         }
 
-        public void GetInstalledPackages(string name, object requestObject)
+        public void GetInstalledPackages(string name, Request request)
         {
-            using (var request = requestObject.As<Request>())
+            request.Debug("Calling '{0}::GetInstalledPackages'", ProviderName);
+            foreach (var install in PythonInstall.FindEnvironments(request))
             {
-                try
+                foreach (var package in SearchSiteFolder(install.GlobalSiteFolder(), install, request))
                 {
-                    request.Debug("Calling '{0}::GetInstalledPackages'", ProviderName);
-                    foreach (var install in PythonInstall.FindEnvironments(request))
-                    {
-                        foreach (var package in SearchSiteFolder(install.GlobalSiteFolder(), install, request))
-                        {
-                            if (name.IsEmptyOrNull() || package.MatchesName(name, request))
-                                package.YieldSelf(request);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    request.Debug(string.Format("Unexpected Exception thrown in '{0}::GetInstalledPackages' -- {1}\\{2}\r\n{3}"), ProviderName, e.GetType().Name, e.Message, e.StackTrace);
+                    if (string.IsNullOrEmpty(name) || package.MatchesName(name, request))
+                        package.YieldSelf(request);
                 }
             }
         }
 
-        public void FindPackage(string name, string requiredVersion, string minimumVersion, string maximumVersion, int id, object requestObject)
+        public void FindPackage(string name, string requiredVersion, string minimumVersion, string maximumVersion, int id, Request request)
         {
-            using (var request = requestObject.As<Request>())
+            request.Debug("Calling '{0}::FindPackage'", ProviderName);
+            foreach (var package in PyPI.Search(name, request))
             {
-                request.Debug("Calling '{0}::FindPackage'", ProviderName);
-                try
-                {
-                    foreach (var package in PyPI.Search(name, request))
-                    {
-                        if (!string.IsNullOrEmpty(requiredVersion) && package.version != requiredVersion)
-                            continue;
-                        // FIXME: Do version comparison with minimumVersion/maximumVersion
-                        package.YieldSelf(request);
-                    }
-                }
-                catch (Exception e)
-                {
-                    request.Debug("Unexpected Exception thrown in '{0}::FindPackage' -- {1}\\{2}\r\n{3}", ProviderName, e.GetType().Name, e.Message, e.StackTrace);
-                }
+                if (!string.IsNullOrEmpty(requiredVersion) && package.version != requiredVersion)
+                    continue;
+                // FIXME: Do version comparison with minimumVersion/maximumVersion
+                package.YieldSelf(request);
             }
-        }    }
+        }
+    }
 }

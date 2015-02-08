@@ -6,7 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
-using OneGet.ProviderSDK;
+using OneGet.Sdk;
 using Newtonsoft.Json.Linq;
 
 namespace PythonProvider
@@ -53,7 +53,7 @@ namespace PythonProvider
             writer.WriteStartElement("param"); //spec
             writer.WriteStartElement("value");
             writer.WriteStartElement("struct");
-            if (!name.IsEmptyOrNull())
+            if (!string.IsNullOrEmpty(name))
             {
                 writer.WriteStartElement("member");
                 writer.WriteElementString("name", "name");
