@@ -28,7 +28,7 @@ namespace PythonProvider
 
         public void GetDynamicOptions(string category, Request request)
         {
-            request.Debug("Calling '{0}::GetDynamicOptions'", ProviderName);
+            request.Debug("Calling '{0}::GetDynamicOptions({1})'", ProviderName, category);
             switch ((category ?? "").ToLowerInvariant())
             {
                 case "install":
