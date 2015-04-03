@@ -17,6 +17,7 @@ namespace PythonProvider
         public string status;
         public string summary;
         public string source;
+        public string sourceurl;
         public string search_key;
         public PythonInstall install;
         private string distinfo_path;
@@ -124,11 +125,43 @@ namespace PythonProvider
                 if (distinfo_path != null)
                     return string.Format("distinfo:{0}", distinfo_path);
                 else if (source != null)
-                    return string.Format("pypi:{0}#{1}/{2}", source, name, version);
+                    return string.Format("pypi:{0}#{1}#{2}/{3}", source, sourceurl, name, version);
                 else if (archive_path != null)
                     return string.Format("archive:{0}/{1}/{2}", name, version, archive_path);
                 return null;
             }
+        }
+
+        public static PythonPackage FromFastReference(string fastreference, Request request)
+        {
+            if (fastreference.StartsWith("distinfo:"))
+            {
+                throw new NotImplementedException("can't read distinfo: fast references yet");
+                // Need to figure out how to identify the python install that owns this package
+            }
+            else if (fastreference.StartsWith("pypi:"))
+            {
+                string[] parts = fastreference.Substring(5).Split(new char[] { '#' }, 3);
+                string source = parts[0];
+                string sourceurl = parts[1];
+                parts = parts[2].Split(new char[] { '/' });
+                string name = parts[0];
+                string version = parts[1];
+                return PyPI.GetPackage(new Tuple<string,string>(source, sourceurl), name, version);
+            }
+            else if (fastreference.StartsWith("archive:"))
+            {
+                string[] parts = fastreference.Substring(8).Split(new char[] { '/' }, 3);
+                string name = parts[0];
+                string version = parts[1];
+                string archive_path = parts[2];
+                foreach (var package in PackagesFromFile(archive_path, request))
+                {
+                    if (package.name == name && package.version == version)
+                        return package;
+                }
+            }
+            return null;
         }
 
         internal void YieldSelf(Request request)

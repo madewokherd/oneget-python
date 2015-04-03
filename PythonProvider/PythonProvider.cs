@@ -107,5 +107,12 @@ namespace PythonProvider
                 package.YieldSelf(request);
             }
         }
+
+        public void InstallPackage(string fastPackageReference, Request request)
+        {
+            request.Debug("Calling '{0}::InstallPackage' '{1}'", ProviderName, fastPackageReference);
+            var package = PythonPackage.FromFastReference(fastPackageReference, request);
+            // FIXME: do the install
+        }
     }
 }

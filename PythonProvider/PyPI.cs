@@ -43,6 +43,18 @@ namespace PythonProvider
             return JObject.Parse(json);
         }
 
+        public static PythonPackage GetPackage(Tuple<string, string> source, string name, string version)
+        {
+            var detailed_info = GetDetailedPackageInfo(source, name, version);
+            PythonPackage package = new PythonPackage(name);
+            package.version = version;
+            package.summary = detailed_info["info"]["summary"].ToString();
+            package.source = source.Item1;
+            package.sourceurl = source.Item2;
+            package.search_key = name;
+            return package;
+        }
+
         public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
         {
             VersionIdentifier required=null, minimum=null, maximum=null;
@@ -153,6 +165,7 @@ namespace PythonProvider
                         package.version = package_version;
                         package.summary = package_info["summary"].ToString();
                         package.source = source.Item1;
+                        package.sourceurl = source.Item2;
                         package.search_key = name;
                         yield return package;
                         if (request.IsCanceled)
