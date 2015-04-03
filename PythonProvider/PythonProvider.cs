@@ -22,11 +22,14 @@ namespace PythonProvider
         }
 
         private static Dictionary<string, string[]> Features = new Dictionary<string, string[]> {
-            { Constants.Features.SupportedExtensions, new[]{"whl"}},
+            { Constants.Features.SupportedExtensions, new[]{"whl"} },
+            { Constants.Features.MagicSignatures, new[]{Constants.Signatures.Zip} },
         };
 
         public void GetFeatures(Request request)
         {
+            request.Debug("Calling '{0}::GetFeatures' ", ProviderName);
+
             foreach (var feature in Features)
             {
                 request.Yield(feature);
@@ -91,6 +94,15 @@ namespace PythonProvider
         {
             request.Debug("Calling '{0}::FindPackage'", ProviderName);
             foreach (var package in PyPI.Search(name, requiredVersion, minimumVersion, maximumVersion, request))
+            {
+                package.YieldSelf(request);
+            }
+        }
+
+        public void FindPackageByFile(string file, int id, Request request)
+        {
+            request.Debug("Calling '{0}::FindPackageByFile' '{1}','{2}'", ProviderName, file, id);
+            foreach (var package in PythonPackage.PackagesFromFile(file, request))
             {
                 package.YieldSelf(request);
             }

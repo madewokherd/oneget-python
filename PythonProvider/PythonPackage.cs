@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OneGet.Sdk;
+using Microsoft.PackageManagement.Archivers.Compression;
+using Microsoft.PackageManagement.Archivers.Compression.Zip;
 
 namespace PythonProvider
 {
@@ -18,6 +20,7 @@ namespace PythonProvider
         public string search_key;
         public PythonInstall install;
         private string distinfo_path;
+        private string archive_path;
 
         public PythonPackage(string name)
         {
@@ -80,6 +83,40 @@ namespace PythonProvider
             return null;
         }
 
+        public static IEnumerable<PythonPackage> PackagesFromFile(string path, Request request)
+        {
+            ZipInfo zi=null;
+            try
+            {
+                zi = new ZipInfo(path);
+            }
+            catch { }
+            if (zi != null)
+            {
+                foreach (var subfile in zi.GetFiles())
+                {
+                    if (subfile.Path.EndsWith(".dist-info") && subfile.Name == "METADATA")
+                    {
+                        if (subfile.Path.Contains("/"))
+                        {
+                            // just so we know we can use these in fastpath
+                            continue;
+                        }
+                        var result = new PythonPackage(null);
+                        result.status = Constants.PackageStatus.Available;
+                        result.archive_path = path;
+                        using (var metadata_stream = subfile.OpenRead())
+                        {
+                            result.ReadMetadata(metadata_stream);
+                        }
+                        if (subfile.Path != string.Format("{0}-{1}.dist-info", result.name, result.version))
+                            continue;
+                        yield return result;
+                    }
+                }
+            }
+        }
+
         internal string fastpath
         {
             get
@@ -88,6 +125,8 @@ namespace PythonProvider
                     return string.Format("distinfo:{0}", distinfo_path);
                 else if (source != null)
                     return string.Format("pypi:{0}#{1}/{2}", source, name, version);
+                else if (archive_path != null)
+                    return string.Format("archive:{0}/{1}/{2}", name, version, archive_path);
                 return null;
             }
         }
