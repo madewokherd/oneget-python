@@ -133,7 +133,7 @@ namespace PythonProvider
 
         internal void YieldSelf(Request request)
         {
-            request.YieldSoftwareIdentity(fastpath, name, version ?? "unknown", "pep386", summary ?? "", source ?? "", search_key ?? "", "", "");
+            request.YieldSoftwareIdentity(fastpath, name, version ?? "unknown", "pep440", summary ?? "", source ?? archive_path ?? "", search_key ?? "", "", "");
         }
 
         internal bool MatchesName(string name, Request request)
