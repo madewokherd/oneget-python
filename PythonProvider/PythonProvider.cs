@@ -73,7 +73,7 @@ namespace PythonProvider
 
         public void GetInstalledPackages(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
         {
-            request.Debug("Calling '{0}::GetInstalledPackages'", ProviderName);
+            request.Debug("Calling '{0}::GetInstalledPackages({1},{2},{3},{4})'", ProviderName, name, requiredVersion, minimumVersion, maximumVersion);
             VersionIdentifier required = string.IsNullOrEmpty(requiredVersion) ? null : new VersionIdentifier(requiredVersion);
             VersionIdentifier minimum = string.IsNullOrEmpty(minimumVersion) ? null : new VersionIdentifier(minimumVersion);
             VersionIdentifier maximum = string.IsNullOrEmpty(maximumVersion) ? null : new VersionIdentifier(maximumVersion);
