@@ -158,5 +158,59 @@ namespace PythonProvider
         {
             return QueryPython("-c \"import sys;import distutils.sysconfig;sys.stdout.write(distutils.sysconfig.get_python_lib())\"");
         }
+
+        // Compatibility tags - https://www.python.org/dev/peps/pep-0425/
+        private IEnumerable<string> PythonTags()
+        {
+            yield return string.Format("py{0}", python_version.release[0]);
+            yield return string.Format("py{0}{1}", python_version.release[0], python_version.release[1]);
+        }
+
+        public bool CompatibleWithPythonTag(string tag)
+        {
+            foreach (var my_tag in PythonTags())
+                if (my_tag == tag)
+                    return true;
+            return false;
+        }
+
+        public bool CompatibleWithAbiTag(string tag)
+        {
+            return tag == "none";
+        }
+
+        public bool CompatibleWithPlatformTag(string tag)
+        {
+            return tag == "any";
+        }
+
+        public bool CompatibleWithTag(string tag)
+        {
+            //FIXME: distinguish between different interpreters, abi's, and platforms
+            string[] tag_bits = tag.Split('-');
+
+            bool python_ok = false;
+            foreach (var python_tag in tag_bits[0].Split('.'))
+                if (CompatibleWithPythonTag(python_tag))
+                    python_ok = true;
+            if (!python_ok)
+                return false;
+
+            bool abi_ok = false;
+            foreach (var abi_tag in tag_bits[1].Split('.'))
+                if (CompatibleWithAbiTag(abi_tag))
+                    abi_ok = true;
+            if (!abi_ok)
+                return false;
+
+            bool platform_ok = false;
+            foreach (var platform_tag in tag_bits[2].Split('.'))
+                if (CompatibleWithPlatformTag(platform_tag))
+                    platform_ok = true;
+            if (!platform_ok)
+                return false;
+
+            return true;
+        }
     }
 }

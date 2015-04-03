@@ -23,6 +23,11 @@ namespace PythonProvider
         private string distinfo_path;
         private string archive_path;
 
+        //wheel metadata
+        private string wheel_version;
+        private bool root_is_purelib;
+        private List<string> tags;
+
         public PythonPackage(string name)
         {
             this.name = name;
@@ -62,6 +67,39 @@ namespace PythonProvider
             using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read))
             {
                 ReadMetadata(stream);
+            }
+        }
+
+        private void ReadWheelMetadata(Stream stream)
+        {
+            using (var reader = new StreamReader(stream))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (line == "")
+                        break;
+                    if (line.StartsWith("        "))
+                        // Line continuation
+                        continue;
+                    int delim_index = line.IndexOf(": ");
+                    if (delim_index != -1)
+                    {
+                        string name = line.Substring(0, delim_index);
+                        string value = line.Substring(delim_index + 2);
+                        name = name.ToLowerInvariant();
+                        if (name == "wheel-version")
+                            this.wheel_version = value;
+                        else if (name == "root-is-purelib" && value == "true")
+                            this.root_is_purelib = true;
+                        else if (name == "tag")
+                        {
+                            if (this.tags == null)
+                                this.tags = new List<string>();
+                            this.tags.Add(value);
+                        }
+                    }
+                }
             }
         }
 
@@ -109,6 +147,10 @@ namespace PythonProvider
                         using (var metadata_stream = subfile.OpenRead())
                         {
                             result.ReadMetadata(metadata_stream);
+                        }
+                        using (var wheel_metadata_stream = zi.GetFile(string.Format("{0}\\WHEEL", subfile.Path)).OpenRead())
+                        {
+                            result.ReadWheelMetadata(wheel_metadata_stream);
                         }
                         if (subfile.Path != string.Format("{0}-{1}.dist-info", result.name, result.version))
                             continue;
@@ -176,8 +218,14 @@ namespace PythonProvider
 
         public bool CanInstall(PythonInstall install, Request request)
         {
-            // TODO
-            return true;
+            if (this.tags == null)
+                return true;
+            foreach (var tag in this.tags)
+            {
+                if (install.CompatibleWithTag(tag))
+                    return true;
+            }
+            return false;
         }
 
         public void Install(PythonInstall install, Request request)
