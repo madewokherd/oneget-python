@@ -21,6 +21,18 @@ namespace PythonProvider
             return ProviderName;
         }
 
+        private static Dictionary<string, string[]> Features = new Dictionary<string, string[]> {
+            { Constants.Features.SupportedExtensions, new[]{"whl"}},
+        };
+
+        public void GetFeatures(Request request)
+        {
+            foreach (var feature in Features)
+            {
+                request.Yield(feature);
+            }
+        }
+
         public void OnUnhandledException(string methodName, Exception exception)
         {
             Console.Error.WriteLine("Unexpected Exception thrown in '{0}::{1}' -- {2}\\{3}\r\n{4}", ProviderName, methodName, exception.GetType().Name, exception.Message, exception.StackTrace);
