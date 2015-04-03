@@ -56,14 +56,20 @@ namespace PythonProvider
             }
         }
 
-        public void GetInstalledPackages(string name, Request request)
+        public void GetInstalledPackages(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
         {
             request.Debug("Calling '{0}::GetInstalledPackages'", ProviderName);
+            VersionIdentifier required = string.IsNullOrEmpty(requiredVersion) ? null : new VersionIdentifier(requiredVersion);
+            VersionIdentifier minimum = string.IsNullOrEmpty(minimumVersion) ? null : new VersionIdentifier(minimumVersion);
+            VersionIdentifier maximum = string.IsNullOrEmpty(maximumVersion) ? null : new VersionIdentifier(maximumVersion);
             foreach (var install in PythonInstall.FindEnvironments(request))
             {
                 foreach (var package in SearchSiteFolder(install.GlobalSiteFolder(), install, request))
                 {
-                    if (string.IsNullOrEmpty(name) || package.MatchesName(name, request))
+                    if ((string.IsNullOrEmpty(name) || package.MatchesName(name, request)) &&
+                        (required == null || required.Compare(package.version) == 0) &&
+                        (minimum == null || minimum.Compare(package.version) <= 0) &&
+                        (maximum == null || maximum.Compare(package.version) >= 0))
                         package.YieldSelf(request);
                 }
             }
