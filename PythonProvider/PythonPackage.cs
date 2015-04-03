@@ -173,5 +173,17 @@ namespace PythonProvider
         {
             return this.name.Contains(name);
         }
+
+        public bool CanInstall(PythonInstall install, Request request)
+        {
+            // TODO
+            return true;
+        }
+
+        public void Install(PythonInstall install, Request request)
+        {
+            // TODO
+            request.Error(ErrorCategory.NotImplemented, name, "installing not implemented");
+        }
     }
 }

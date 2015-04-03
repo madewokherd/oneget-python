@@ -112,7 +112,36 @@ namespace PythonProvider
         {
             request.Debug("Calling '{0}::InstallPackage' '{1}'", ProviderName, fastPackageReference);
             var package = PythonPackage.FromFastReference(fastPackageReference, request);
-            // FIXME: do the install
+            List<PythonInstall> usableinstalls = new List<PythonInstall>();
+            List<PythonInstall> unusableinstalls = new List<PythonInstall>();
+            foreach (var candidateinstall in PythonInstall.FindEnvironments(request))
+            {
+                if (package.CanInstall(candidateinstall, request))
+                {
+                    usableinstalls.Add(candidateinstall);
+                }
+                else
+                {
+                    unusableinstalls.Add(candidateinstall);
+                }
+            }
+            if (usableinstalls.Count == 1)
+            {
+                package.Install(usableinstalls[0], request);
+            }
+            else if (usableinstalls.Count == 0)
+            {
+                request.Error(ErrorCategory.NotImplemented, package.name, "TODO: bootstrap a python?");
+            }
+            else if (usableinstalls.Count > 1)
+            {
+                request.Warning("Multiple installed Python interpreters could satisfy this request:");
+                foreach (var install in usableinstalls)
+                {
+                    request.Warning("  Python version '{0}' at '{1}'", install.python_version, install.exe_path);
+                }
+                request.Error(ErrorCategory.NotSpecified, package.name, "Please select a Python to install to, using e.g. -PythonVersion 3.2 or -PythonLocation c:\\python32\\python.exe");
+            }
         }
     }
 }
