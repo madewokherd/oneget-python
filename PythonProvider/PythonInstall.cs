@@ -146,7 +146,6 @@ namespace PythonProvider
                 if (Environment.Is64BitOperatingSystem)
                 {
                     FindEnvironments(result, true, false, request);
-                    FindEnvironments(result, true, true, request);
                 }
                 FindEnvironments(result, false, false, request);
                 FindEnvironments(result, false, true, request);
