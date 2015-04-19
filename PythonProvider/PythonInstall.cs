@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using OneGet.Sdk;
 
 namespace PythonProvider
@@ -12,6 +13,7 @@ namespace PythonProvider
         public string install_path;
         public string exe_path;
         public VersionIdentifier python_version;
+        private string global_site_folder;
 
         private PythonInstall()
         {
@@ -28,9 +30,8 @@ namespace PythonProvider
             return proc.StandardOutput.ReadToEnd();
         }
 
-        private VersionIdentifier GetPythonVersion()
+        private VersionIdentifier GetPythonVersion(string version_str)
         {
-            string version_str = QueryPython("-c \"import sys;sys.stdout.write('.'.join(str(x) for x in sys.version_info))\"");
             string[] version_parts = version_str.Split(new char[]{'.'}, 6);
 
             if (version_parts.Length != 5)
@@ -75,19 +76,45 @@ namespace PythonProvider
             return result;
         }
 
+        private static string FindPythonScript(string filename)
+        {
+            Uri assembly_url = new Uri(Assembly.GetExecutingAssembly().CodeBase);
+            string result = Path.Combine(Path.GetDirectoryName(assembly_url.LocalPath), "python", filename);
+            if (!File.Exists(result))
+            {
+                throw new FileNotFoundException("Included python script not found", result);
+            }
+            return result;
+        }
+
+        private void ReadInterpreterInfo()
+        {
+            string info = QueryPython(string.Format("\"{0}\"", FindPythonScript("get_info.py")));
+
+            string[] parts = info.Split(new char[]{'\n'}, 3);
+            if (parts.Length != 2)
+                throw new Exception(string.Format("Bad output from python interpreter at {0}", exe_path));
+
+            python_version = GetPythonVersion(parts[0]);
+            global_site_folder = parts[1];
+        }
+
         public static PythonInstall FromPath(string installpath, Request request)
         {
             try
             {
                 PythonInstall result = new PythonInstall();
-                result.install_path = installpath;
-                result.exe_path = Path.Combine(installpath, "python.exe");
-                if (File.Exists(result.exe_path))
+                if (Directory.Exists(installpath))
                 {
-                    result.python_version = result.GetPythonVersion();
-                    if (result.python_version == null)
-                        return null;
+                    result.install_path = installpath;
+                    result.exe_path = Path.Combine(installpath, "python.exe");
                 }
+                else
+                {
+                    result.install_path = Path.GetDirectoryName(installpath);
+                    result.exe_path = installpath;
+                }
+                result.ReadInterpreterInfo();
                 string requested_version_str = request.GetOptionValue("PythonVersion");
                 if (!string.IsNullOrEmpty(requested_version_str))
                 {
@@ -97,8 +124,9 @@ namespace PythonProvider
                 }
                 return result;
             }
-            catch
+            catch (Exception e)
             {
+                request.Debug("Python at {0} isn't usable: {1}", installpath, e);
             }
             return null;
         }
@@ -155,7 +183,7 @@ namespace PythonProvider
 
         public string GlobalSiteFolder()
         {
-            return QueryPython("-c \"import sys;import distutils.sysconfig;sys.stdout.write(distutils.sysconfig.get_python_lib())\"");
+            return global_site_folder;
         }
 
         // Compatibility tags - https://www.python.org/dev/peps/pep-0425/
