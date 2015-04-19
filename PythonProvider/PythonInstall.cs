@@ -14,6 +14,7 @@ namespace PythonProvider
         public string exe_path;
         public VersionIdentifier python_version;
         private string global_site_folder;
+        private string[] supported_tags;
 
         private PythonInstall()
         {
@@ -91,12 +92,13 @@ namespace PythonProvider
         {
             string info = QueryPython(string.Format("\"{0}\"", FindPythonScript("get_info.py")));
 
-            string[] parts = info.Split(new char[]{'\n'}, 3);
-            if (parts.Length != 2)
+            string[] parts = info.Split(new char[]{'\0'}, 4);
+            if (parts.Length != 3)
                 throw new Exception(string.Format("Bad output from python interpreter at {0}", exe_path));
 
             python_version = GetPythonVersion(parts[0]);
             global_site_folder = parts[1];
+            supported_tags = parts[2].Split('.');
         }
 
         public static PythonInstall FromPath(string installpath, Request request)
@@ -186,58 +188,21 @@ namespace PythonProvider
             return global_site_folder;
         }
 
-        // Compatibility tags - https://www.python.org/dev/peps/pep-0425/
-        private IEnumerable<string> PythonTags()
-        {
-            yield return string.Format("py{0}", python_version.release[0]);
-            yield return string.Format("py{0}{1}", python_version.release[0], python_version.release[1]);
-        }
-
-        public bool CompatibleWithPythonTag(string tag)
-        {
-            foreach (var my_tag in PythonTags())
-                if (my_tag == tag)
-                    return true;
-            return false;
-        }
-
-        public bool CompatibleWithAbiTag(string tag)
-        {
-            return tag == "none";
-        }
-
-        public bool CompatibleWithPlatformTag(string tag)
-        {
-            return tag == "any";
-        }
-
         public bool CompatibleWithTag(string tag)
         {
-            //FIXME: distinguish between different interpreters, abi's, and platforms
             string[] tag_bits = tag.Split('-');
 
-            bool python_ok = false;
             foreach (var python_tag in tag_bits[0].Split('.'))
-                if (CompatibleWithPythonTag(python_tag))
-                    python_ok = true;
-            if (!python_ok)
-                return false;
+                foreach (var abi_tag in tag_bits[1].Split('.'))
+                    foreach (var platform_tag in tag_bits[2].Split('.'))
+                    {
+                        string specific_tag = string.Format("{0}-{1}-{2}", python_tag, abi_tag, platform_tag);
+                        foreach (var supported_tag in supported_tags)
+                            if (supported_tag == specific_tag)
+                                return true;
+                    }
 
-            bool abi_ok = false;
-            foreach (var abi_tag in tag_bits[1].Split('.'))
-                if (CompatibleWithAbiTag(abi_tag))
-                    abi_ok = true;
-            if (!abi_ok)
-                return false;
-
-            bool platform_ok = false;
-            foreach (var platform_tag in tag_bits[2].Split('.'))
-                if (CompatibleWithPlatformTag(platform_tag))
-                    platform_ok = true;
-            if (!platform_ok)
-                return false;
-
-            return true;
+            return false;
         }
     }
 }
