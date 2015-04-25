@@ -31,6 +31,17 @@ namespace PythonProvider
             return proc.StandardOutput.ReadToEnd();
         }
 
+        public int InstallWheel(string filename)
+        {
+            ProcessStartInfo startinfo = new ProcessStartInfo();
+            startinfo.FileName = exe_path;
+            startinfo.Arguments = string.Format("\"{0}\" \"{1}\"", FindPythonScript("install_wheel.py"), filename);
+            startinfo.UseShellExecute = false;
+            Process proc = Process.Start(startinfo);
+            proc.WaitForExit();
+            return proc.ExitCode;
+        }
+
         private VersionIdentifier GetPythonVersion(string version_str)
         {
             string[] version_parts = version_str.Split(new char[]{'.'}, 6);

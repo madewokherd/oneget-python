@@ -27,6 +27,7 @@ namespace PythonProvider
         private string wheel_version;
         private bool root_is_purelib;
         private List<string> tags;
+        private bool is_wheel;
 
         public PythonPackage(string name)
         {
@@ -154,6 +155,7 @@ namespace PythonProvider
                         }
                         if (subfile.Path != string.Format("{0}-{1}.dist-info", result.name, result.version))
                             continue;
+                        result.is_wheel = true;
                         yield return result;
                     }
                 }
@@ -228,10 +230,22 @@ namespace PythonProvider
             return false;
         }
 
-        public void Install(PythonInstall install, Request request)
+        public bool Install(PythonInstall install, Request request)
         {
-            // TODO
-            request.Error(ErrorCategory.NotImplemented, name, "installing not implemented");
+            if (is_wheel)
+            {
+                if (install.InstallWheel(archive_path) != 0)
+                {
+                    request.Error(ErrorCategory.NotSpecified, name, "wheel install failed");
+                    return false;
+                }
+                return true;
+            }
+            else
+            {
+                request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for this package type");
+                return false;
+            }
         }
     }
 }
