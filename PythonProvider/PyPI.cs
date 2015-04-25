@@ -55,6 +55,68 @@ namespace PythonProvider
             return package;
         }
 
+        private static IEnumerable<PythonPackage> FilterPackageVersions(Tuple<string,string> source,
+            string search_name, string package_name, HashSet<string> nonhidden_versions,
+            VersionIdentifier required, VersionIdentifier minimum, VersionIdentifier maximum, Request request)
+        {
+            var detailed_info = GetDetailedPackageInfo(source, package_name, nonhidden_versions.ElementAt(0));
+            bool list_all_versions = (request.GetOptionValue("AllVersions") == "True");
+            var release_listing = detailed_info.GetValue("releases") as JObject;
+            List<string> sorted_versions = new List<string>();
+            
+            foreach (var release in release_listing)
+            {
+                sorted_versions.Add(release.Key);
+            }
+
+            sorted_versions.Sort(delegate(string a, string b)
+            {
+                // sort nonhidden versions first
+                if (nonhidden_versions.Contains(a))
+                {
+                    if (!nonhidden_versions.Contains(b))
+                        return -1;
+                }
+                else if (!nonhidden_versions.Contains(a))
+                {
+                    if (nonhidden_versions.Contains(b))
+                        return 1;
+                }
+                // sort non-prerelease versions first
+                VersionIdentifier va = new VersionIdentifier(a);
+                VersionIdentifier vb = new VersionIdentifier(b);
+                if (va.IsPrerelease && !vb.IsPrerelease)
+                    return 1;
+                if (!va.IsPrerelease && vb.IsPrerelease)
+                    return -1;
+                // newer versions first
+                return vb.Compare(va);
+            });
+
+            foreach (var version in sorted_versions)
+            {
+                VersionIdentifier candidate_version = new VersionIdentifier(version);
+                var uris = release_listing[version] as JArray;
+                if (uris == null || uris.Count == 0)
+                    continue;
+                if (required != null && required.Compare(candidate_version) != 0)
+                    continue;
+                if (minimum != null && minimum.Compare(candidate_version) > 0)
+                    continue;
+                if (maximum != null && maximum.Compare(candidate_version) < 0)
+                    continue;
+                PythonPackage package = new PythonPackage(package_name);
+                package.version = version;
+                package.summary = detailed_info["info"]["summary"].ToString();
+                package.source = source.Item1;
+                package.sourceurl = source.Item2;
+                package.search_key = search_name;
+                yield return package;
+                if (!list_all_versions)
+                    break;
+            }
+        }
+
         public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
         {
             VersionIdentifier required=null, minimum=null, maximum=null;
@@ -106,71 +168,31 @@ namespace PythonProvider
                         request.Debug("search returned unexpected value");
                         continue;
                     }
+                    string package_name = null;
+                    HashSet<string> nonhidden_versions = new HashSet<string>();
                     foreach (var package_info_obj in search_response)
                     {
+                        if (request.IsCanceled)
+                            break;
                         var package_info = package_info_obj as Dictionary<string, object>;
                         if (package_info == null)
                         {
                             request.Debug("search returned unexpected value in array");
                             continue;
                         }
-                        string package_name = package_info["name"].ToString();
-                        string package_current_version = package_info["version"].ToString();
-                        string package_version = null;
-                        request.Debug("considering {0} {1}", package_name, package_current_version);
-                        var detailed_info = GetDetailedPackageInfo(source, package_name, package_current_version);
-                        var uri_listing = detailed_info.GetValue("urls") as JArray;
-                        if (uri_listing != null && uri_listing.Count != 0 &&
-                            (required == null || required.Compare(package_current_version) == 0) &&
-                            (minimum == null || minimum.Compare(package_current_version) <= 0) &&
-                            (maximum == null || maximum.Compare(package_current_version) >= 0))
+                        if (package_name != null && package_name != package_info["name"].ToString())
                         {
-                            package_version = package_current_version;
-                            request.Debug("using that version");
+                            foreach (var package in FilterPackageVersions(source, name, package_name,
+                                nonhidden_versions, required, minimum, maximum, request))
+                                yield return package;
+                            nonhidden_versions.Clear();
                         }
-                        else
-                        {
-                            var release_listing = detailed_info.GetValue("releases") as JObject;
-                            if (release_listing == null)
-                                continue;
-                            VersionIdentifier best_version_id = null;
-                            foreach (var release in release_listing)
-                            {
-                                VersionIdentifier candidate_version = new VersionIdentifier(release.Key);
-                                var uris = release.Value as JArray;
-                                if (uris == null || uris.Count == 0)
-                                    continue;
-                                if (required != null && required.Compare(candidate_version) != 0)
-                                    continue;
-                                if (minimum != null && minimum.Compare(candidate_version) > 0)
-                                    continue;
-                                if (maximum != null && maximum.Compare(candidate_version) < 0)
-                                    continue;
-                                if (best_version_id == null ||
-                                    (best_version_id.IsPrerelease && !candidate_version.IsPrerelease) ||
-                                    best_version_id.Compare(candidate_version) < 0)
-                                {
-                                    best_version_id = candidate_version;
-                                    package_version = release.Key;
-                                }
-                            }
-                            if (package_version != null)
-                                request.Debug("using version {0}", package_version);
-                            else
-                                request.Debug("no matching version");
-                        }
-                        if (package_version == null)
-                            continue;
-                        PythonPackage package = new PythonPackage(package_name);
-                        package.version = package_version;
-                        package.summary = package_info["summary"].ToString();
-                        package.source = source.Item1;
-                        package.sourceurl = source.Item2;
-                        package.search_key = name;
-                        yield return package;
-                        if (request.IsCanceled)
-                            break;
+                        package_name = package_info["name"].ToString();
+                        nonhidden_versions.Add(package_info["version"].ToString());
                     }
+                    foreach (var package in FilterPackageVersions(source, name, package_name,
+                        nonhidden_versions, required, minimum, maximum, request))
+                        yield return package;
                 }
             }
         }
