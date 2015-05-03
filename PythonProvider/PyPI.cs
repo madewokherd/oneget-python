@@ -135,7 +135,7 @@ namespace PythonProvider
             }
         }
 
-        public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
+        private static IEnumerable<PythonPackage> ContainsSearch(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
         {
             VersionIdentifier required=null, minimum=null, maximum=null;
 
@@ -214,7 +214,77 @@ namespace PythonProvider
                 }
             }
         }
-        
+
+        private static IEnumerable<PythonPackage> ExactSearch(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
+        {
+            VersionIdentifier required = null, minimum = null, maximum = null;
+
+            if (!string.IsNullOrWhiteSpace(requiredVersion))
+                required = new VersionIdentifier(requiredVersion);
+            if (!string.IsNullOrWhiteSpace(minimumVersion))
+                minimum = new VersionIdentifier(minimumVersion);
+            if (!string.IsNullOrWhiteSpace(maximumVersion))
+                maximum = new VersionIdentifier(maximumVersion);
+
+            foreach (var source in GetSources(request))
+            {
+                foreach (string exact_name in request.GetOptionValues("Name"))
+                {
+                    MemoryStream call_ms = new MemoryStream();
+                    XmlWriter writer = XmlWriter.Create(call_ms);
+                    writer.WriteStartElement("methodCall");
+                    writer.WriteElementString("methodName", "package_releases");
+                    writer.WriteStartElement("params");
+                    writer.WriteStartElement("param"); //package_name
+                    writer.WriteStartElement("value");
+                    writer.WriteElementString("string", exact_name);
+                    writer.WriteEndElement(); //value
+                    writer.WriteEndElement(); //param
+                    writer.WriteEndElement(); //params
+                    writer.WriteEndElement(); //methodCall
+                    writer.Close();
+
+                    byte[] call = call_ms.ToArray();
+
+                    using (var response = DoWebRequest(source, call, request))
+                    {
+                        request.Debug("Python::Search asking {0} about {1}", source.Item1, exact_name);
+                        var search_response = ParseResponse(response.GetResponseStream(), request) as List<object>;
+                        if (search_response == null || search_response.Count == 0)
+                        {
+                            //FIXME: Check for non-hidden versions if this fails?
+                            continue;
+                        }
+                        HashSet<string> versions = new HashSet<string>();
+                        foreach (var version in search_response)
+                        {
+                            versions.Add((string)version);
+                        }
+                        foreach (var package in FilterPackageVersions(source, exact_name, exact_name,
+                            versions, required, minimum, maximum, request))
+                            yield return package;
+                    }
+                }
+            }
+        }
+
+        public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
+        {
+            bool exact_match = false;
+
+            foreach (var package in ExactSearch(name, requiredVersion, minimumVersion, maximumVersion, request))
+            {
+                exact_match = true;
+                yield return package;
+            }
+
+            if (!exact_match)
+            {
+                foreach (var package in ContainsSearch(name, requiredVersion, minimumVersion, maximumVersion, request))
+                    yield return package;
+            }
+        }
+
         private static Dictionary<string, object> ParseStruct(XmlReader reader)
         {
             Dictionary<string, object> result = new Dictionary<string, object>();
