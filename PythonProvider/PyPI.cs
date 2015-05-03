@@ -43,6 +43,22 @@ namespace PythonProvider
             return JObject.Parse(json);
         }
 
+        private static PackageDownload[] ParseUrls(JToken token)
+        {
+            JArray urls = (JArray)token;
+            PackageDownload[] result = new PackageDownload[urls.Count];
+            for (int i = 0; i < urls.Count; i++)
+            {
+                JObject uri = (JObject)urls[i];
+                result[i].url = uri["url"].ToString();
+                result[i].basename = uri["filename"].ToString();
+                result[i].md5_digest = uri["md5_digest"].ToString();
+                result[i].packagetype = uri["packagetype"].ToString();
+                result[i].size = (long)uri["size"];
+            }
+            return result;
+        }
+
         public static PythonPackage GetPackage(Tuple<string, string> source, string name, string version)
         {
             var detailed_info = GetDetailedPackageInfo(source, name, version);
@@ -52,6 +68,7 @@ namespace PythonProvider
             package.source = source.Item1;
             package.sourceurl = source.Item2;
             package.search_key = name;
+            package.downloads = ParseUrls(detailed_info["urls"]);
             return package;
         }
 
@@ -111,6 +128,7 @@ namespace PythonProvider
                 package.source = source.Item1;
                 package.sourceurl = source.Item2;
                 package.search_key = search_name;
+                package.downloads = ParseUrls(uris);
                 yield return package;
                 if (!list_all_versions)
                     break;

@@ -10,6 +10,15 @@ using Microsoft.PackageManagement.Archivers.Compression.Zip;
 
 namespace PythonProvider
 {
+    struct PackageDownload
+    {
+        public string url;
+        public string basename;
+        public string md5_digest;
+        public string packagetype;
+        public long size;
+    }
+
     class PythonPackage
     {
         public string name;
@@ -18,6 +27,7 @@ namespace PythonProvider
         public string summary;
         public string source;
         public string sourceurl;
+        public PackageDownload[] downloads;
         public string search_key;
         public PythonInstall install;
         private string distinfo_path;
