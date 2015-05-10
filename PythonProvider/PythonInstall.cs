@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using OneGet.Sdk;
 
 namespace PythonProvider
@@ -214,6 +216,36 @@ namespace PythonProvider
                     }
 
             return false;
+        }
+
+        public bool NeedAdminToWrite()
+        {
+            WindowsIdentity current_identity = WindowsIdentity.GetCurrent();
+            WindowsPrincipal current_principal = new WindowsPrincipal(current_identity);
+            if (current_principal.IsInRole(WindowsBuiltInRole.Administrator))
+                return false;
+
+            var access_rules = Directory.GetAccessControl(global_site_folder).GetAccessRules(true, true, typeof(SecurityIdentifier));
+
+            bool admin_has_access = false;
+            bool user_has_access = false;
+
+            foreach (FileSystemAccessRule rule in access_rules)
+            {
+                if (rule.AccessControlType != AccessControlType.Allow)
+                    /* Elevation isn't going to do anything about deny rules, so whatever. */
+                    continue;
+                if ((rule.FileSystemRights & FileSystemRights.CreateDirectories) == 0)
+                    continue;
+
+                if (rule.IdentityReference.Equals(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null)))
+                    admin_has_access = true;
+                else if (current_identity.User.Equals(rule.IdentityReference) ||
+                         (rule.IdentityReference is SecurityIdentifier &&
+                          current_principal.IsInRole((SecurityIdentifier)rule.IdentityReference)))
+                    user_has_access = true;
+            }
+            return admin_has_access && !user_has_access;
         }
     }
 }
