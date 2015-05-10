@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using OneGet.Sdk;
@@ -35,7 +39,6 @@ namespace PythonProvider
 
         //wheel metadata
         private string wheel_version;
-        private bool root_is_purelib;
         private List<string> tags;
         private bool is_wheel;
 
@@ -101,8 +104,6 @@ namespace PythonProvider
                         name = name.ToLowerInvariant();
                         if (name == "wheel-version")
                             this.wheel_version = value;
-                        else if (name == "root-is-purelib" && value == "true")
-                            this.root_is_purelib = true;
                         else if (name == "tag")
                         {
                             if (this.tags == null)
@@ -228,15 +229,153 @@ namespace PythonProvider
             return this.name.Contains(name);
         }
 
-        public bool CanInstall(PythonInstall install, Request request)
+        private bool CanInstall(PythonInstall install, PackageDownload download, out bool install_specific, Request request)
         {
-            if (this.tags == null)
-                return true;
-            foreach (var tag in this.tags)
+            install_specific = false;
+            if (download.packagetype == "bdist_wheel")
             {
+                string tag = download.basename;
+                if (tag.EndsWith(".whl"))
+                {
+                    tag = tag.Substring(0, tag.Length - 4);
+                }
+                int platform_dash = tag.LastIndexOf('-');
+                if (platform_dash <= 0) return false;
+                int abi_dash = tag.LastIndexOf('-', platform_dash - 1);
+                if (abi_dash <= 0) return false;
+                int python_dash = tag.LastIndexOf('-', abi_dash - 1);
+                if (python_dash <= 0) return false;
+                tag = tag.Substring(python_dash + 1);
+
+                install_specific = true;
+
                 if (install.CompatibleWithTag(tag))
                     return true;
+
+                return false;
             }
+            return true;
+        }
+
+        public bool CanInstall(PythonInstall install, Request request)
+        {
+            if (is_wheel)
+            {
+                if (this.tags == null)
+                    return true;
+                foreach (var tag in this.tags)
+                {
+                    if (install.CompatibleWithTag(tag))
+                        return true;
+                }
+                return false;
+            }
+            else if (source != null)
+            {
+                bool any_install_specific_download = false;
+
+                foreach (var download in downloads)
+                {
+                    bool install_specific;
+                    if (CanInstall(install, download, out install_specific, request))
+                        return true;
+                    if (install_specific)
+                        any_install_specific_download = true;
+                }
+                return !any_install_specific_download;
+            }
+            return true;
+        }
+
+        private string hash_to_string(byte[] hash)
+        {
+            StringBuilder result = new StringBuilder(hash.Length * 2);
+
+            foreach (byte b in hash)
+            {
+                result.Append(b.ToString("x2"));
+            }
+            return result.ToString();
+        }
+
+        // sigh
+        [DllImport("kernel32.dll", EntryPoint = "CreateDirectoryW", SetLastError = true, CharSet = CharSet.Unicode)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool Win32CreateDirectory(string pathname, IntPtr securityattributes);
+        
+        private bool DoDownload(PackageDownload download, out string tempdir, out string filename, Request request)
+        {
+            bool created = false;
+            tempdir = "";
+
+            while (!created)
+            {
+                tempdir = Path.GetTempPath() + Guid.NewGuid().ToString();
+                if (Win32CreateDirectory(tempdir, IntPtr.Zero))
+                {
+                    created = true;
+                }
+                else
+                {
+                    if (Marshal.GetLastWin32Error() != 183) // ERROR_ALREADY_EXISTS
+                    {
+                        throw new Win32Exception();
+                    }
+                }
+            }
+            filename = Path.Combine(tempdir, download.basename);
+            request.ProviderServices.DownloadFile(new Uri(download.url), filename, request);
+
+            if (!string.IsNullOrWhiteSpace(download.md5_digest))
+            {
+                request.Debug("expected md5sum: {0}", download.md5_digest);
+
+                using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
+                {
+                    using (MD5 md5 = MD5.Create())
+                    {
+                        byte[] actual_hash = md5.ComputeHash(fs);
+                        string actual_hash_string = hash_to_string(actual_hash);
+                        request.Debug("actual md5sum: {0}", actual_hash_string);
+                        if (actual_hash_string != download.md5_digest)
+                        {
+                            request.Error(ErrorCategory.MetadataError, name, "Downloaded file has incorrect MD5 sum");
+                            File.Delete(filename);
+                            Directory.Delete(tempdir);
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        private bool Install(PythonInstall install, PackageDownload download, Request request)
+        {
+            if (download.packagetype == "bdist_wheel")
+            {
+                string tempdir, filename;
+                if (!DoDownload(download, out tempdir, out filename, request))
+                    return false;
+
+                try
+                {
+                    foreach (var package in PackagesFromFile(filename, request))
+                    {
+                        if (package.name == name && package.version == version)
+                            return package.Install(install, request);
+                    }
+                    request.Error(ErrorCategory.MetadataError, name, "Downloaded package file doesn't contain the expected package.");
+                    return false;
+                }
+                finally
+                {
+                    File.Delete(filename);
+                    Directory.Delete(tempdir);
+                }
+            }
+            request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for this package type");
             return false;
         }
 
@@ -255,6 +394,19 @@ namespace PythonProvider
                     return false;
                 }
                 return true;
+            }
+            else if (source != null)
+            {
+                foreach (var download in downloads)
+                {
+                    bool install_specific;
+                    if (CanInstall(install, download, out install_specific, request) && install_specific)
+                    {
+                        return Install(install, download, request);
+                    }
+                }
+                request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for this package type");
+                return false;
             }
             else
             {
