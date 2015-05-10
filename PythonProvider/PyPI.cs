@@ -208,9 +208,12 @@ namespace PythonProvider
                         package_name = package_info["name"].ToString();
                         nonhidden_versions.Add(package_info["version"].ToString());
                     }
-                    foreach (var package in FilterPackageVersions(source, name, package_name,
-                        nonhidden_versions, required, minimum, maximum, request))
-                        yield return package;
+                    if (package_name != null)
+                    {
+                        foreach (var package in FilterPackageVersions(source, name, package_name,
+                            nonhidden_versions, required, minimum, maximum, request))
+                            yield return package;
+                    }
                 }
             }
         }
