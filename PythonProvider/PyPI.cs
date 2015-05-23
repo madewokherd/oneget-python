@@ -69,6 +69,14 @@ namespace PythonProvider
             package.sourceurl = source.Item2;
             package.search_key = name;
             package.downloads = ParseUrls(detailed_info["urls"]);
+            JToken requires_dist;
+            if (((JObject)detailed_info["info"]).TryGetValue("requires_dist", out requires_dist))
+            {
+                foreach (var requirement in requires_dist)
+                {
+                    package.requires_dist.Add(DistRequirement.Parse(requirement.ToString()));
+                }
+            }
             return package;
         }
 
