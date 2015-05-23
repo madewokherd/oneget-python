@@ -23,6 +23,40 @@ namespace PythonProvider
         public long size;
     }
 
+    struct DistRequirement
+    {
+        public string name;
+        public bool has_version_specifier;
+        public VersionSpecifier version_specifier;
+        public string condition;
+        public string raw_string;
+
+        public static DistRequirement Parse(string requirement)
+        {
+            DistRequirement result = new DistRequirement();
+            result.raw_string = requirement;
+            if (requirement.Contains(';'))
+            {
+                string[] parts = requirement.Split(new char[] {';'}, 2);
+                requirement = parts[0].Trim();
+                result.condition = parts[1].Trim();
+            }
+            if (requirement.Contains('('))
+            {
+                string[] parts = requirement.TrimEnd(')').Split(new char[] {'('}, 2);
+                result.name = parts[0].Trim();
+                result.has_version_specifier = true;
+                result.version_specifier = new VersionSpecifier(parts[1]);
+            }
+            else
+            {
+                result.name = requirement.Trim();
+                result.has_version_specifier = false;
+            }
+            return result;
+        }
+    }
+
     class PythonPackage
     {
         public string name;
@@ -37,6 +71,8 @@ namespace PythonProvider
         private string distinfo_path;
         private string archive_path;
 
+        public List<DistRequirement> requires_dist;
+
         //wheel metadata
         private string wheel_version;
         private List<string> tags;
@@ -45,6 +81,7 @@ namespace PythonProvider
         public PythonPackage(string name)
         {
             this.name = name;
+            this.requires_dist = new List<DistRequirement>();
         }
 
         public void ReadMetadata(Stream stream)
@@ -71,6 +108,8 @@ namespace PythonProvider
                             this.version = value;
                         else if (name == "summary")
                             this.summary = value;
+                        else if (name == "requires-dist")
+                            this.requires_dist.Add(DistRequirement.Parse(value));
                     }
                 }
             }
@@ -134,6 +173,29 @@ namespace PythonProvider
             return null;
         }
 
+        private static string escape_package_name(string name)
+        {
+            List<string> alphanumeric_runs = new List<string>();
+            int i = 0;
+            while (true)
+            {
+                int run_start = i;
+                while (i < name.Length && char.IsLetterOrDigit(name[i]))
+                {
+                    i++;
+                }
+                if (i == run_start)
+                    alphanumeric_runs.Add("");
+                else
+                    alphanumeric_runs.Add(name.Substring(run_start, i - run_start));
+                if (i == name.Length)
+                    break;
+                while (i < name.Length && !char.IsLetterOrDigit(name[i]))
+                    i++;
+            }
+            return string.Join("_", alphanumeric_runs);
+        }
+
         public static IEnumerable<PythonPackage> PackagesFromFile(string path, Request request)
         {
             ZipInfo zi=null;
@@ -164,7 +226,7 @@ namespace PythonProvider
                         {
                             result.ReadWheelMetadata(wheel_metadata_stream);
                         }
-                        if (subfile.Path != string.Format("{0}-{1}.dist-info", result.name, result.version))
+                        if (subfile.Path != string.Format("{0}-{1}.dist-info", escape_package_name(result.name), result.version))
                             continue;
                         result.is_wheel = true;
                         yield return result;
@@ -351,6 +413,36 @@ namespace PythonProvider
             return true;
         }
 
+        public bool CheckDependencies(PythonInstall install, out DistRequirement failed_dependency, Request request)
+        {
+            failed_dependency = new DistRequirement();
+            if (requires_dist.Count == 0)
+                return true;
+            List<PythonPackage> installed_packages = new List<PythonPackage>(install.FindInstalledPackages(null, null, request));
+            foreach (var dep in requires_dist)
+            {
+                if (dep.condition != null)
+                    // FIXME: handle this, somehow?
+                    continue;
+                bool satisfied_dependency = false;
+                foreach (var package in installed_packages)
+                {
+                    if (dep.name == package.name &&
+                        (!dep.has_version_specifier || dep.version_specifier.MatchesVersion(package.version)))
+                    {
+                        satisfied_dependency = true;
+                        break;
+                    }
+                }
+                if (!satisfied_dependency)
+                {
+                    failed_dependency = dep;
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private bool Install(PythonInstall install, PackageDownload download, Request request)
         {
             if (download.packagetype == "bdist_wheel")
@@ -384,6 +476,12 @@ namespace PythonProvider
             if (install.NeedAdminToWrite())
             {
                 request.Error(ErrorCategory.PermissionDenied, name, "You need to be admin to modify this Python install.");
+                return false;
+            }
+            DistRequirement failed_dependency;
+            if (!CheckDependencies(install, out failed_dependency, request))
+            {
+                request.Error(ErrorCategory.NotInstalled, name, string.Format("Dependency '{0}' not found.", failed_dependency.raw_string));
                 return false;
             }
             if (is_wheel)

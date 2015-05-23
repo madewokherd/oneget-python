@@ -14,7 +14,8 @@ namespace PythonProvider
 
         public int[] release;
 
-        public string invalid_string;
+        public bool is_valid;
+        public string raw_version_string;
 
         public enum PrereleaseType
         {
@@ -36,12 +37,21 @@ namespace PythonProvider
         public bool is_localversion;
         public object[] localversion_segments;
 
-        public VersionIdentifier(string version_string)
+        public bool is_wildcard;
+
+        public VersionIdentifier(string version_string, bool allow_wildcard)
         {
-            if (!ParseVersion(version_string))
+            is_valid = true;
+            if (!ParseVersion(version_string, allow_wildcard))
             {
-                invalid_string = version_string;
+                is_valid = false;
+                this.release = new int[] { 0 };
+                raw_version_string = version_string.Trim();
             }
+        }
+
+        public VersionIdentifier(string version_string): this(version_string, false)
+        {
         }
 
         private PrereleaseType GetPrereleaseType(string identifier)
@@ -73,6 +83,11 @@ namespace PythonProvider
         }
 
         private bool ParseVersion(string version_string)
+        {
+            return ParseVersion(version_string, false);
+        }
+
+        private bool ParseVersion(string version_string, bool allow_wildcard)
         {
             int pos = 0;
 
@@ -133,6 +148,15 @@ namespace PythonProvider
             }
 
             release = release_components.ToArray();
+
+            // maybe a wildcard, if this is a version specifier
+            if (pos < version_string.Length - 1 && version_string[pos] == '.' &&
+                version_string[pos+1] == '*')
+            {
+                pos += 2;
+                is_wildcard = true;
+                goto end; // No other segments permitted after wildcard
+            }
 
             // up to 1 prerelease segment
             if ((pos < version_string.Length && char.IsLetter(version_string[pos])) ||
@@ -322,6 +346,8 @@ namespace PythonProvider
                 pos = version_string.Length;
             }
 
+            end:
+
             if (pos != version_string.Length)
                 return false;
 
@@ -349,6 +375,11 @@ namespace PythonProvider
         }
 
         public int Compare(VersionIdentifier other)
+        {
+            return Compare(other, false, false, false);
+        }
+
+        public int Compare(VersionIdentifier other, bool ignore_local, bool ignore_pre, bool ignore_post)
         {
             int res = cmp(epoch, other.epoch);
 
@@ -378,83 +409,92 @@ namespace PythonProvider
                         return -1;
             }
 
-            if (is_plain_devrelease() && !other.is_plain_devrelease())
-                return -1;
-
-            if (!is_plain_devrelease() && other.is_plain_devrelease())
-                return 1;
-
-            res = cmp((int)prerelease_type, (int)other.prerelease_type);
-            if (res != 0)
-                return res;
-
-            res = cmp(prerelease_version, other.prerelease_version);
-            if (res != 0)
-                return res;
-
-            if (is_postrelease && !other.is_postrelease)
-                return 1;
-
-            if (!is_postrelease && other.is_postrelease)
-                return -1;
-
-            res = cmp(postrelease_version, other.postrelease_version);
-            if (res != 0)
-                return res;
-
-            if (is_devrelease && !other.is_devrelease)
-                return -1;
-
-            if (!is_devrelease && other.is_devrelease)
-                return 1;
-
-            res = cmp(devrelease_version, other.devrelease_version);
-            if (res != 0)
-                return res;
-
-            if (is_localversion && !other.is_localversion)
-                return 1;
-
-            if (!is_localversion && other.is_localversion)
-                return -1;
-
-            if (is_localversion)
+            if (!ignore_pre)
             {
-                common_segments = localversion_segments.Length < other.localversion_segments.Length ? localversion_segments.Length : other.localversion_segments.Length;
+                if (is_plain_devrelease() && !other.is_plain_devrelease())
+                    return -1;
 
-                for (int i=0; i<common_segments; i++)
+                if (!is_plain_devrelease() && other.is_plain_devrelease())
+                    return 1;
+
+                res = cmp((int)prerelease_type, (int)other.prerelease_type);
+                if (res != 0)
+                    return res;
+
+                res = cmp(prerelease_version, other.prerelease_version);
+                if (res != 0)
+                    return res;
+            }
+
+            if (!ignore_post)
+            {
+                if (is_postrelease && !other.is_postrelease)
+                    return 1;
+
+                if (!is_postrelease && other.is_postrelease)
+                    return -1;
+
+                res = cmp(postrelease_version, other.postrelease_version);
+                if (res != 0)
+                    return res;
+
+                if (is_devrelease && !other.is_devrelease)
+                    return -1;
+
+                if (!is_devrelease && other.is_devrelease)
+                    return 1;
+
+                res = cmp(devrelease_version, other.devrelease_version);
+                if (res != 0)
+                    return res;
+            }
+
+            if (!ignore_local)
+            {
+                if (is_localversion && !other.is_localversion)
+                    return 1;
+
+                if (!is_localversion && other.is_localversion)
+                    return -1;
+
+                if (is_localversion)
                 {
-                    string this_str = localversion_segments[i] as string;
-                    if (this_str != null)
-                    {
-                        string other_str = other.localversion_segments[i] as string;
-                        if (other_str == null)
-                            // any string < any int
-                            return -1;
-                        else
-                        {
-                            res = cmp(this_str, other_str);
-                            if (res != 0)
-                                return res;
-                        }
-                    }
-                    else
-                    {
-                        int this_int = (int)localversion_segments[i];
-                        string other_string = other.localversion_segments[i] as string;
-                        if (other_string != null)
-                            // any int > any string
-                            return 1;
-                        else
-                        {
-                            res = cmp(this_int, (int)other.localversion_segments[i]);
-                            if (res != 0)
-                                return res;
-                        }
-                    }
-                }
+                    common_segments = localversion_segments.Length < other.localversion_segments.Length ? localversion_segments.Length : other.localversion_segments.Length;
 
-                res = cmp(localversion_segments.Length, other.localversion_segments.Length);
+                    for (int i = 0; i < common_segments; i++)
+                    {
+                        string this_str = localversion_segments[i] as string;
+                        if (this_str != null)
+                        {
+                            string other_str = other.localversion_segments[i] as string;
+                            if (other_str == null)
+                                // any string < any int
+                                return -1;
+                            else
+                            {
+                                res = cmp(this_str, other_str);
+                                if (res != 0)
+                                    return res;
+                            }
+                        }
+                        else
+                        {
+                            int this_int = (int)localversion_segments[i];
+                            string other_string = other.localversion_segments[i] as string;
+                            if (other_string != null)
+                                // any int > any string
+                                return 1;
+                            else
+                            {
+                                res = cmp(this_int, (int)other.localversion_segments[i]);
+                                if (res != 0)
+                                    return res;
+                            }
+                        }
+                    }
+
+                    res = cmp(localversion_segments.Length, other.localversion_segments.Length);
+                }
             }
 
             return res;
@@ -486,8 +526,8 @@ namespace PythonProvider
 
         public override string ToString()
         {
-            if (invalid_string != null)
-                return invalid_string;
+            if (!is_valid)
+                return raw_version_string;
 
             StringBuilder result = new StringBuilder();
 

@@ -59,18 +59,6 @@ namespace PythonProvider
             }
         }
 
-        private IEnumerable<PythonPackage> SearchSiteFolder(string path, PythonInstall install, Request request)
-        {
-            request.Debug("Python::SearchSiteFolder searching {0}", path);
-            foreach (string dir in Directory.EnumerateDirectories(path, "*.dist-info"))
-            {
-                request.Debug("Python::SearchSiteFolder trying {0}", dir);
-                PythonPackage result = PythonPackage.FromDistInfo(dir, install, request);
-                if (result != null)
-                    yield return result;
-            }
-        }
-
         public void GetInstalledPackages(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
         {
             request.Debug("Calling '{0}::GetInstalledPackages({1},{2},{3},{4})'", ProviderName, name, requiredVersion, minimumVersion, maximumVersion);
@@ -79,11 +67,9 @@ namespace PythonProvider
             VersionIdentifier maximum = string.IsNullOrEmpty(maximumVersion) ? null : new VersionIdentifier(maximumVersion);
             foreach (var install in PythonInstall.FindEnvironments(request))
             {
-                foreach (var package in SearchSiteFolder(install.GlobalSiteFolder(), install, request))
+                foreach (var package in install.FindInstalledPackages(name, required, request))
                 {
-                    if ((string.IsNullOrEmpty(name) || package.MatchesName(name, request)) &&
-                        (required == null || required.Compare(package.version) == 0) &&
-                        (minimum == null || minimum.Compare(package.version) <= 0) &&
+                    if ((minimum == null || minimum.Compare(package.version) <= 0) &&
                         (maximum == null || maximum.Compare(package.version) >= 0))
                         package.YieldSelf(request);
                 }

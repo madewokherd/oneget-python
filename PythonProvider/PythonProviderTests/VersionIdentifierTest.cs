@@ -78,7 +78,7 @@ namespace PythonProviderTests
             foreach (var version_string in sorted_version_strings)
             {
                 VersionIdentifier ver = new VersionIdentifier(version_string);
-                Assert.IsNull(ver.invalid_string, "version string {0} rejected by parser", version_string);
+                Assert.IsTrue(ver.is_valid, "version string {0} rejected by parser", version_string);
                 Assert.AreEqual(ver.ToString(), version_string, "version string did not normalize to itself");
             }
 
@@ -86,7 +86,7 @@ namespace PythonProviderTests
             for (i = 0; i < string_normalizations.Length; i+=2)
             {
                 VersionIdentifier ver = new VersionIdentifier(string_normalizations[i]);
-                Assert.IsNull(ver.invalid_string, "version string {0} rejected by parser", string_normalizations[i]);
+                Assert.IsTrue(ver.is_valid, "version string {0} rejected by parser", string_normalizations[i]);
                 Assert.AreEqual(ver.ToString(), string_normalizations[i + 1], "expected {0} to normalize to {1}", string_normalizations[i], string_normalizations[i + 1]);
             }
         }

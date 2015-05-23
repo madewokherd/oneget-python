@@ -196,6 +196,26 @@ namespace PythonProvider
             return result;
         }
 
+        public IEnumerable<PythonPackage> FindInstalledPackages(string name, VersionIdentifier required_version, Request request)
+        {
+            /* FIXME: optimize if name and required_version are specified. */
+            string path = global_site_folder;
+            request.Debug("Python::FindInstalledPackages searching {0}", path);
+            foreach (string dir in Directory.EnumerateDirectories(path, "*.dist-info"))
+            {
+                request.Debug("Python::FindInstalledPackages trying {0}", dir);
+                PythonPackage result = PythonPackage.FromDistInfo(dir, this, request);
+                if (result != null)
+                {
+                    if (name != null && !result.MatchesName(name, request))
+                        continue;
+                    if (required_version != null && required_version.Compare(result.version) != 0)
+                        continue;
+                    yield return result;
+                }
+            }
+        }
+
         public string GlobalSiteFolder()
         {
             return global_site_folder;

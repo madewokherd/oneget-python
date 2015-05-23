@@ -79,6 +79,7 @@
     <Compile Include="Sdk\ErrorCategory.cs" />
     <Compile Include="Sdk\Request.cs" />
     <Compile Include="VersionIdentifier.cs" />
+    <Compile Include="VersionSpecifier.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="oneget.manifest">
