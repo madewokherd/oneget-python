@@ -44,6 +44,17 @@ namespace PythonProvider
             return proc.ExitCode;
         }
 
+        public int UninstallDistinfo(string path)
+        {
+            ProcessStartInfo startinfo = new ProcessStartInfo();
+            startinfo.FileName = exe_path;
+            startinfo.Arguments = string.Format("\"{0}\" \"{1}\"", FindPythonScript("uninstall_distinfo.py"), path);
+            startinfo.UseShellExecute = false;
+            Process proc = Process.Start(startinfo);
+            proc.WaitForExit();
+            return proc.ExitCode;
+        }
+
         private VersionIdentifier GetPythonVersion(string version_str)
         {
             string[] version_parts = version_str.Split(new char[]{'.'}, 6);

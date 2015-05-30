@@ -143,5 +143,11 @@ namespace PythonProvider
                 }
             }
         }
+
+        public void UninstallPackage(string fastPackageReference, Request request)
+        {
+            var package = PythonPackage.FromFastReference(fastPackageReference, request);
+            package.Uninstall(request);
+        }
     }
 }

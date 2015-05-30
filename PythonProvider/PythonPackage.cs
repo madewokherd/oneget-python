@@ -240,7 +240,7 @@ namespace PythonProvider
             get
             {
                 if (distinfo_path != null)
-                    return string.Format("distinfo:{0}", distinfo_path);
+                    return string.Format("distinfo:{0}|{1}", install.exe_path, distinfo_path);
                 else if (source != null)
                     return string.Format("pypi:{0}#{1}#{2}/{3}", source, sourceurl, name, version);
                 else if (archive_path != null)
@@ -253,8 +253,9 @@ namespace PythonProvider
         {
             if (fastreference.StartsWith("distinfo:"))
             {
-                throw new NotImplementedException("can't read distinfo: fast references yet");
-                // Need to figure out how to identify the python install that owns this package
+                string[] parts = fastreference.Substring(9).Split(new char[] { '|' }, 2);
+                PythonInstall install = PythonInstall.FromPath(parts[0], request);
+                return FromDistInfo(parts[1], install, request);
             }
             else if (fastreference.StartsWith("pypi:"))
             {
@@ -509,6 +510,24 @@ namespace PythonProvider
             else
             {
                 request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for this package type");
+                return false;
+            }
+        }
+
+        public bool Uninstall(Request request)
+        {
+            if (install.NeedAdminToWrite())
+            {
+                request.Error(ErrorCategory.PermissionDenied, name, "You need to be admin to modify this Python install.");
+                return false;
+            }
+            if (distinfo_path != null)
+            {
+                return install.UninstallDistinfo(distinfo_path) == 0;
+            }
+            else
+            {
+                request.Error(ErrorCategory.NotImplemented, name, "uninstalling not implemented for this package type");
                 return false;
             }
         }
