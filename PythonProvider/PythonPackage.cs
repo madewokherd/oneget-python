@@ -492,6 +492,11 @@ namespace PythonProvider
                     request.Error(ErrorCategory.NotSpecified, name, "wheel install failed");
                     return false;
                 }
+                foreach (var package in install.FindInstalledPackages(name, null, request))
+                {
+                    if (package.version != version)
+                        package.Uninstall(request);
+                }
                 return true;
             }
             else if (source != null)
