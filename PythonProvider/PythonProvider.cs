@@ -67,9 +67,10 @@ namespace PythonProvider
             VersionIdentifier maximum = string.IsNullOrEmpty(maximumVersion) ? null : new VersionIdentifier(maximumVersion);
             foreach (var install in PythonInstall.FindEnvironments(request))
             {
-                foreach (var package in install.FindInstalledPackages(name, required, request))
+                foreach (var package in install.FindInstalledPackages(name, requiredVersion, request))
                 {
-                    if ((minimum == null || minimum.Compare(package.version) <= 0) &&
+                    if ((required == null || required.Compare(package.version) == 0) &&
+                        (minimum == null || minimum.Compare(package.version) <= 0) &&
                         (maximum == null || maximum.Compare(package.version) >= 0))
                         package.YieldSelf(request);
                 }
