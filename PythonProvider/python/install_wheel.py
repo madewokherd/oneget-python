@@ -3,4 +3,4 @@ import wheel.install
 
 whl = wheel.install.WheelFile(sys.argv[1])
 
-whl.install()
+whl.install(force=True)
