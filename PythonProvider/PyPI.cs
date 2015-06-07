@@ -356,6 +356,13 @@ namespace PythonProvider
                 case "array":
                     result = ParseArray(reader);
                     break;
+                case "boolean":
+                    result = (reader.ReadElementContentAsInt() != 0);
+                    break;
+                case "nil":
+                    reader.ReadElementContentAsString();
+                    result = null;
+                    break;
                 default:
                     throw new Exception(string.Format("unhandled value type {0}", reader.Name));
             }
