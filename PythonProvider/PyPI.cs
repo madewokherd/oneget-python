@@ -283,16 +283,19 @@ namespace PythonProvider
         {
             bool exact_match = false;
 
-            foreach (var package in ExactSearch(name, requiredVersion, minimumVersion, maximumVersion, request))
+            if (string.IsNullOrWhiteSpace(name) || name.ToLowerInvariant() != "python")
             {
-                exact_match = true;
-                yield return package;
-            }
-
-            if (!exact_match)
-            {
-                foreach (var package in ContainsSearch(name, requiredVersion, minimumVersion, maximumVersion, request))
+                foreach (var package in ExactSearch(name, requiredVersion, minimumVersion, maximumVersion, request))
+                {
+                    exact_match = true;
                     yield return package;
+                }
+
+                if (!exact_match)
+                {
+                    foreach (var package in ContainsSearch(name, requiredVersion, minimumVersion, maximumVersion, request))
+                        yield return package;
+                }
             }
         }
 

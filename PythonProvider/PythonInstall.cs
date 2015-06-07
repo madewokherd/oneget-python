@@ -16,8 +16,9 @@ namespace PythonProvider
         public string exe_path;
         private string global_site_folder;
         private string[] supported_tags;
+        public string web_resource;
 
-        private PythonInstall() : base("Python")
+        internal PythonInstall() : base("Python")
         {
         }
 
