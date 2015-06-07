@@ -206,6 +206,18 @@ namespace PythonProvider
             return result;
         }
 
+        internal override string fastpath
+        {
+            get
+            {
+                if (exe_path != null)
+                {
+                    return string.Format("installedpython:{0}", exe_path);
+                }
+                return null;
+            }
+        }
+
         public IEnumerable<PythonPackage> FindInstalledPackages(string name, string required_version, Request request)
         {
             /* FIXME: optimize if name and required_version are specified. */

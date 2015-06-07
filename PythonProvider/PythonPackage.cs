@@ -235,7 +235,7 @@ namespace PythonProvider
             }
         }
 
-        internal string fastpath
+        internal virtual string fastpath
         {
             get
             {
