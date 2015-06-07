@@ -63,7 +63,7 @@ namespace PythonProvider
         {
             var detailed_info = GetDetailedPackageInfo(source, name, version);
             PythonPackage package = new PythonPackage(name);
-            package.version = version;
+            package.version = new VersionIdentifier(version);
             package.summary = detailed_info["info"]["summary"].ToString();
             package.source = source.Item1;
             package.sourceurl = source.Item2;
@@ -131,7 +131,7 @@ namespace PythonProvider
                 if (maximum != null && maximum.Compare(candidate_version) < 0)
                     continue;
                 PythonPackage package = new PythonPackage(package_name);
-                package.version = version;
+                package.version = new VersionIdentifier(version);
                 package.summary = detailed_info["info"]["summary"].ToString();
                 package.source = source.Item1;
                 package.sourceurl = source.Item2;

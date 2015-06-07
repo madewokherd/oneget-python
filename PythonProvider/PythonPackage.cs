@@ -60,7 +60,7 @@ namespace PythonProvider
     class PythonPackage
     {
         public string name;
-        public string version;
+        public VersionIdentifier version;
         public string status;
         public string summary;
         public string source;
@@ -105,7 +105,7 @@ namespace PythonProvider
                         if (name == "name")
                             this.name = value;
                         else if (name == "version")
-                            this.version = value;
+                            this.version = new VersionIdentifier(value);
                         else if (name == "summary")
                             this.summary = value;
                         else if (name == "requires-dist")
@@ -226,7 +226,7 @@ namespace PythonProvider
                         {
                             result.ReadWheelMetadata(wheel_metadata_stream);
                         }
-                        if (subfile.Path != string.Format("{0}-{1}.dist-info", escape_package_name(result.name), result.version))
+                        if (subfile.Path != string.Format("{0}-{1}.dist-info", escape_package_name(result.name), result.version.raw_version_string))
                             continue;
                         result.is_wheel = true;
                         yield return result;
@@ -242,9 +242,9 @@ namespace PythonProvider
                 if (distinfo_path != null)
                     return string.Format("distinfo:{0}|{1}", install.exe_path, distinfo_path);
                 else if (source != null)
-                    return string.Format("pypi:{0}#{1}#{2}/{3}", source, sourceurl, name, version);
+                    return string.Format("pypi:{0}#{1}#{2}/{3}", source, sourceurl, name, version.raw_version_string);
                 else if (archive_path != null)
-                    return string.Format("archive:{0}/{1}/{2}", name, version, archive_path);
+                    return string.Format("archive:{0}/{1}/{2}", name, version.raw_version_string, archive_path);
                 return null;
             }
         }
@@ -275,7 +275,7 @@ namespace PythonProvider
                 string archive_path = parts[2];
                 foreach (var package in PackagesFromFile(archive_path, request))
                 {
-                    if (package.name == name && package.version == version)
+                    if (package.name == name && package.version.Compare(version) == 0)
                         return package;
                 }
             }
@@ -284,7 +284,7 @@ namespace PythonProvider
 
         internal void YieldSelf(Request request)
         {
-            request.YieldSoftwareIdentity(fastpath, name, version ?? "unknown", "pep440", summary ?? "", source ?? archive_path ?? "", search_key ?? "", "", "");
+            request.YieldSoftwareIdentity(fastpath, name, version == null ? "unknown" : version.ToString(), "pep440", summary ?? "", source ?? archive_path ?? "", search_key ?? "", "", "");
         }
 
         internal bool MatchesName(string name, Request request)
@@ -456,7 +456,7 @@ namespace PythonProvider
                 {
                     foreach (var package in PackagesFromFile(filename, request))
                     {
-                        if (package.name == name && package.version == version)
+                        if (package.name == name && package.version.raw_version_string == version.raw_version_string)
                             return package.Install(install, request);
                     }
                     request.Error(ErrorCategory.MetadataError, name, "Downloaded package file doesn't contain the expected package.");
@@ -494,7 +494,7 @@ namespace PythonProvider
                 }
                 foreach (var package in install.FindInstalledPackages(name, null, request))
                 {
-                    if (package.version != version)
+                    if (package.version.raw_version_string != version.raw_version_string)
                         package.Uninstall(request);
                 }
                 return true;

@@ -10,15 +10,14 @@ using OneGet.Sdk;
 
 namespace PythonProvider
 {
-    class PythonInstall
+    class PythonInstall : PythonPackage
     {
         public string install_path;
         public string exe_path;
-        public VersionIdentifier python_version;
         private string global_site_folder;
         private string[] supported_tags;
 
-        private PythonInstall()
+        private PythonInstall() : base("Python")
         {
         }
 
@@ -120,7 +119,7 @@ namespace PythonProvider
             if (parts.Length != 3)
                 throw new Exception(string.Format("Bad output from python interpreter at {0}", exe_path));
 
-            python_version = GetPythonVersion(parts[0]);
+            version = GetPythonVersion(parts[0]);
             global_site_folder = parts[1];
             supported_tags = parts[2].Split('.');
         }
@@ -145,7 +144,7 @@ namespace PythonProvider
                 if (!string.IsNullOrEmpty(requested_version_str))
                 {
                     VersionIdentifier requested_version = new VersionIdentifier(requested_version_str);
-                    if (!requested_version.IsPrefix(result.python_version))
+                    if (!requested_version.IsPrefix(result.version))
                         return null;
                 }
                 return result;
@@ -175,7 +174,7 @@ namespace PythonProvider
                             if (install != null)
                             {
                                 result.Add(install);
-                                request.Debug("Python::FindInstalledEnvironments found {0} in {1}", install.python_version, install.install_path);
+                                request.Debug("Python::FindInstalledEnvironments found {0} in {1}", install.version, install.install_path);
                             }
                             installpathkey.Dispose();
                         }

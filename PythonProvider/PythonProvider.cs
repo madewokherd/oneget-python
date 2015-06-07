@@ -127,7 +127,7 @@ namespace PythonProvider
                     PythonInstall greatest = usableinstalls[0];
                     foreach (var candidate in usableinstalls)
                     {
-                        if (candidate.python_version.Compare(greatest.python_version) > 0)
+                        if (candidate.version.Compare(greatest.version) > 0)
                             greatest = candidate;
                     }
                     package.Install(greatest, request);
@@ -137,7 +137,7 @@ namespace PythonProvider
                     request.Warning("Multiple installed Python interpreters could satisfy this request:");
                     foreach (var install in usableinstalls)
                     {
-                        request.Warning("  Python version '{0}' at '{1}'", install.python_version, install.exe_path);
+                        request.Warning("  Python version '{0}' at '{1}'", install.version, install.exe_path);
                     }
                     request.Warning("Please select a Python to install to, using e.g. -PythonVersion 3.2 or -PythonLocation c:\\python32\\python.exe");
                     request.Error(ErrorCategory.NotSpecified, package.name, "Not enough information to select a Python interpreter for the install");

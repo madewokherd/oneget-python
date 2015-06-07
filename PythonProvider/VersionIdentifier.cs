@@ -42,16 +42,17 @@ namespace PythonProvider
         public VersionIdentifier(string version_string, bool allow_wildcard)
         {
             is_valid = true;
+            raw_version_string = version_string.Trim();
             if (!ParseVersion(version_string, allow_wildcard))
             {
                 is_valid = false;
                 this.release = new int[] { 0 };
-                raw_version_string = version_string.Trim();
             }
         }
 
         public VersionIdentifier(string version_string): this(version_string, false)
         {
+            is_valid = true;
         }
 
         private PrereleaseType GetPrereleaseType(string identifier)
@@ -503,6 +504,40 @@ namespace PythonProvider
         public int Compare(string other)
         {
             return Compare(new VersionIdentifier(other));
+        }
+
+        public override bool Equals(object obj)
+        {
+            VersionIdentifier id = obj as VersionIdentifier;
+            if (id != null)
+            {
+                return Compare(id) == 0;
+            }
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            if (!is_valid)
+            {
+                return raw_version_string.GetHashCode();
+            }
+            else if (release.Length > 1 && release[release.Length-1] == 0)
+            {
+                var trimmed_version = new VersionIdentifier(this.ToString());
+                int i = release.Length - 1;
+                while (i > 1 && release[i] == 0)
+                {
+                    i--;
+                }
+                trimmed_version.release = new int[i];
+                for (int j = 0; j < i; j++)
+                {
+                    trimmed_version.release[j] = release[j];
+                }
+                return trimmed_version.ToString().GetHashCode();
+            }
+            return this.ToString().GetHashCode();
         }
 
         public bool IsPrefix(VersionIdentifier other)
