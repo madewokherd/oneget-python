@@ -102,5 +102,24 @@ namespace PythonProvider
                 }
             }
         }
+
+        public static PythonInstall PackageFromWebResource(string resource, Request request)
+        {
+            string url = string.Format("{0}/downloads/release/{1}/", api_url, resource);
+            JObject result = DoWebRequest(url);
+
+            return FromReleaseRes(result, request);
+        }
+
+        public static IEnumerable<JObject> DownloadsFromWebResource(string resource, Request request)
+        {
+            string url = string.Format("{0}/downloads/release_file/?release={1}&limit=0", api_url, resource);
+            JObject result = DoWebRequest(url);
+
+            foreach (JObject download in result["objects"])
+            {
+                yield return download;
+            }
+        }
     }
 }

@@ -104,6 +104,11 @@ namespace PythonProvider
         {
             request.Debug("Calling '{0}::InstallPackage' '{1}'", ProviderName, fastPackageReference);
             var package = PythonPackage.FromFastReference(fastPackageReference, request);
+            if (package is PythonInstall)
+            {
+                ((PythonInstall)package).Install(request);
+                return;
+            }
             List<PythonInstall> usableinstalls = new List<PythonInstall>();
             List<PythonInstall> unusableinstalls = new List<PythonInstall>();
             foreach (var candidateinstall in PythonInstall.FindEnvironments(request))

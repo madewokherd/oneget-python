@@ -279,6 +279,10 @@ namespace PythonProvider
                         return package;
                 }
             }
+            else if (fastreference.StartsWith("pythonweb:"))
+            {
+                return PythonWebsite.PackageFromWebResource(fastreference.Substring(10), request);
+            }
             return null;
         }
 

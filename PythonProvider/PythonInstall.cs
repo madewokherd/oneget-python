@@ -5,8 +5,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Security.AccessControl;
+using System.Security.Cryptography;
 using System.Security.Principal;
+using System.Text;
 using OneGet.Sdk;
+using Newtonsoft.Json.Linq;
 
 namespace PythonProvider
 {
@@ -215,6 +218,10 @@ namespace PythonProvider
                 {
                     return string.Format("installedpython:{0}", exe_path);
                 }
+                else if (web_resource != null)
+                {
+                    return string.Format("pythonweb:{0}", web_resource);
+                }
                 return null;
             }
         }
@@ -289,6 +296,107 @@ namespace PythonProvider
                     user_has_access = true;
             }
             return admin_has_access && !user_has_access;
+        }
+
+        private string hash_to_string(byte[] hash)
+        {
+            StringBuilder result = new StringBuilder(hash.Length * 2);
+
+            foreach (byte b in hash)
+            {
+                result.Append(b.ToString("x2"));
+            }
+            return result.ToString();
+        }
+
+        private bool DoDownload(JObject download, out string filename, Request request)
+        {
+            bool created = false;
+
+            do
+            {
+                filename = Path.GetTempPath() + Guid.NewGuid().ToString() + ".msi";
+                try
+                {
+                    File.Open(filename, FileMode.CreateNew).Close();
+                    created = true;
+                }
+                catch (IOException)
+                {
+                }
+            } while (!created);
+            request.ProviderServices.DownloadFile(new Uri(download["url"].ToString()), filename, request);
+
+            string md5sum = download["md5_sum"].ToString();
+            request.Debug("expected md5sum: {0}", md5sum);
+
+            using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
+            {
+                using (MD5 md5 = MD5.Create())
+                {
+                    byte[] actual_hash = md5.ComputeHash(fs);
+                    string actual_hash_string = hash_to_string(actual_hash);
+                    request.Debug("actual md5sum: {0}", actual_hash_string);
+                    if (actual_hash_string != md5sum)
+                    {
+                        request.Error(ErrorCategory.MetadataError, name, "Downloaded file has incorrect MD5 sum");
+                        File.Delete(filename);
+                        return false;
+                    }
+                }
+            }
+
+            // FIXME: Verify gpg signature?
+
+            return true;
+        }
+
+        public bool Install(Request request)
+        {
+            if (web_resource == null)
+            {
+                throw new InvalidOperationException("Installing an existing install of Python doesn't make sense");
+            }
+            //bool user_scope = false;
+            bool install_64bit = Environment.Is64BitOperatingSystem;
+
+            JObject download=null;
+            foreach (JObject candidate in PythonWebsite.DownloadsFromWebResource(web_resource, request))
+            {
+                string name = candidate["name"].ToString();
+                if (install_64bit)
+                {
+                    if (name == "Windows x86-64 MSI installer")
+                    {
+                        download = candidate;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (name == "Windows x86 MSI installer")
+                    {
+                        download = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (download == null)
+            {
+                request.Error(ErrorCategory.ResourceUnavailable, "Python", "Cannot find installer download");
+                return false;
+            }
+
+            string filename;
+            if (!DoDownload(download, out filename, request))
+            {
+                return false;
+            }
+
+            bool success = request.ProviderServices.Install(filename, "", request);
+            File.Delete(filename);
+            return success;
         }
     }
 }
