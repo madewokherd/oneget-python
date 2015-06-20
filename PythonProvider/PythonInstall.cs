@@ -60,7 +60,15 @@ namespace PythonProvider
             ProcessStartInfo startinfo = new ProcessStartInfo();
             startinfo.FileName = exe_path;
             startinfo.Arguments = string.Format("\"{0}\" \"{1}\"", FindPythonScript("uninstall_distinfo.py"), path);
-            startinfo.UseShellExecute = false;
+            if (NeedAdminToWrite())
+            {
+                startinfo.UseShellExecute = true;
+                startinfo.Verb = "runas";
+            }
+            else
+            {
+                startinfo.UseShellExecute = false;
+            }
             Process proc = Process.Start(startinfo);
             proc.WaitForExit();
             return proc.ExitCode;

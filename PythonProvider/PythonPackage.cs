@@ -520,11 +520,6 @@ namespace PythonProvider
 
         public bool Uninstall(Request request)
         {
-            if (install.NeedAdminToWrite())
-            {
-                request.Error(ErrorCategory.PermissionDenied, name, "You need to be admin to modify this Python install.");
-                return false;
-            }
             if (distinfo_path != null)
             {
                 return install.UninstallDistinfo(distinfo_path) == 0;
