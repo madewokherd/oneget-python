@@ -309,13 +309,13 @@ namespace PythonProvider
             return result.ToString();
         }
 
-        private bool DoDownload(JObject download, out string filename, Request request)
+        private bool DoDownload(JObject download, string extension, out string filename, Request request)
         {
             bool created = false;
 
             do
             {
-                filename = Path.GetTempPath() + Guid.NewGuid().ToString() + ".msi";
+                filename = Path.GetTempPath() + Guid.NewGuid().ToString() + extension;
                 try
                 {
                     File.Open(filename, FileMode.CreateNew).Close();
@@ -361,6 +361,7 @@ namespace PythonProvider
             bool install_64bit = Environment.Is64BitOperatingSystem;
 
             JObject download=null;
+            bool is_msi = false;
             foreach (JObject candidate in PythonWebsite.DownloadsFromWebResource(web_resource, request))
             {
                 string name = candidate["name"].ToString();
@@ -369,6 +370,13 @@ namespace PythonProvider
                     if (name == "Windows x86-64 MSI installer")
                     {
                         download = candidate;
+                        is_msi = true;
+                        break;
+                    }
+                    else if (name == "Windows x86-64 executable installer")
+                    {
+                        download = candidate;
+                        is_msi = false;
                         break;
                     }
                 }
@@ -377,6 +385,13 @@ namespace PythonProvider
                     if (name == "Windows x86 MSI installer")
                     {
                         download = candidate;
+                        is_msi = true;
+                        break;
+                    }
+                    else if (name == "Windows x86 executable installer")
+                    {
+                        download = candidate;
+                        is_msi = false;
                         break;
                     }
                 }
@@ -389,12 +404,27 @@ namespace PythonProvider
             }
 
             string filename;
-            if (!DoDownload(download, out filename, request))
+            if (!DoDownload(download, is_msi ? ".msi" : ".exe", out filename, request))
             {
                 return false;
             }
 
-            bool success = request.ProviderServices.Install(filename, "", request);
+            bool success;
+            if (is_msi)
+            {
+                success = request.ProviderServices.Install(filename, "", request);
+            }
+            else
+            {
+                // wix bootstrapper
+                ProcessStartInfo startinfo = new ProcessStartInfo();
+                startinfo.FileName = filename;
+                startinfo.Arguments = "/quiet /install";
+                startinfo.UseShellExecute = false;
+                Process proc = Process.Start(startinfo);
+                proc.WaitForExit();
+                success = proc.ExitCode == 0;
+            }
             File.Delete(filename);
             return success;
         }
