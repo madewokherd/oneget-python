@@ -12,7 +12,7 @@ to_remove_set = set()
 
 to_keep = set()
 
-record = open(os.path.join(sys.argv[1], 'RECORD'), 'rb')
+record = open(os.path.join(sys.argv[1], 'RECORD'), 'r')
 
 def record_filenames(record, filter=None):
 	for (path, hash, size) in csv.reader(record):
@@ -34,7 +34,11 @@ def record_filenames(record, filter=None):
 						buf = f.read(8192)
 				finally:
 					f.close()
-				actual_hash = base64.urlsafe_b64encode(h.digest()).rstrip('=')
+				actual_hash = base64.urlsafe_b64encode(h.digest())
+				if not isinstance(actual_hash, str):
+					# python 3.x, this is a bytes object
+					actual_hash = actual_hash.decode('ascii')
+				actual_hash = actual_hash.rstrip('=')
 				if actual_hash != hash:
 					continue
 		except OSError:
@@ -55,7 +59,7 @@ for dirname in os.listdir(basepath):
 	if os.path.normcase(os.path.normpath(sys.argv[1])) == os.path.normcase(os.path.normpath(distinfo_path)):
 		continue
 	try:
-		record = open(os.path.join(distinfo_path, 'RECORD'), 'rb')
+		record = open(os.path.join(distinfo_path, 'RECORD'), 'r')
 	except OSError:
 		continue
 	try:
