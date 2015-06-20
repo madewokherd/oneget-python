@@ -478,11 +478,6 @@ namespace PythonProvider
 
         public bool Install(PythonInstall install, Request request)
         {
-            if (install.NeedAdminToWrite())
-            {
-                request.Error(ErrorCategory.PermissionDenied, name, "You need to be admin to modify this Python install.");
-                return false;
-            }
             DistRequirement failed_dependency;
             if (!CheckDependencies(install, out failed_dependency, request))
             {
