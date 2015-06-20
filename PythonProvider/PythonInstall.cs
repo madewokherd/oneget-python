@@ -160,7 +160,7 @@ namespace PythonProvider
             return null;
         }
 
-        private static void FindEnvironments(List<PythonInstall> result, bool win64, bool user, Request request)
+        private static void FindEnvironments(List<PythonInstall> result, bool win64, bool user, HashSet<string> seen_paths, Request request)
         {
             using (RegistryKey basekey = RegistryKey.OpenBaseKey(
                 user ? RegistryHive.CurrentUser : RegistryHive.LocalMachine,
@@ -174,7 +174,10 @@ namespace PythonProvider
                         RegistryKey installpathkey = pythoncore.OpenSubKey(string.Format(@"{0}\InstallPath", version));
                         if (installpathkey != null)
                         {
-                            PythonInstall install = FromPath(installpathkey.GetValue(null).ToString(), request);
+                            string path = installpathkey.GetValue(null).ToString();
+                            if (!seen_paths.Add(path))
+                                continue;
+                            PythonInstall install = FromPath(path, request);
                             if (install != null)
                             {
                                 result.Add(install);
@@ -200,12 +203,13 @@ namespace PythonProvider
             }
             else
             {
+                HashSet<string> seen_paths = new HashSet<string>();
                 if (Environment.Is64BitOperatingSystem)
                 {
-                    FindEnvironments(result, true, false, request);
+                    FindEnvironments(result, true, false, seen_paths, request);
                 }
-                FindEnvironments(result, false, false, request);
-                FindEnvironments(result, false, true, request);
+                FindEnvironments(result, false, false, seen_paths, request);
+                FindEnvironments(result, false, true, seen_paths, request);
             }
             return result;
         }
