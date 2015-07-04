@@ -283,6 +283,10 @@ namespace PythonProvider
             {
                 return PythonWebsite.PackageFromWebResource(fastreference.Substring(10), request);
             }
+            else if (fastreference.StartsWith("installedpython:"))
+            {
+                return PythonInstall.FromPath(fastreference.Substring(16), request);
+            }
             return null;
         }
 
@@ -518,7 +522,7 @@ namespace PythonProvider
             }
         }
 
-        public bool Uninstall(Request request)
+        public virtual bool Uninstall(Request request)
         {
             if (distinfo_path != null)
             {

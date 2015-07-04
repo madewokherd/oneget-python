@@ -20,6 +20,9 @@ namespace PythonProvider
         private string global_site_folder;
         private string[] supported_tags;
         public string web_resource;
+        private bool from_registry;
+        private bool reg_user;
+        public bool is_64bit;
 
         internal PythonInstall() : base("Python")
         {
@@ -135,13 +138,14 @@ namespace PythonProvider
         {
             string info = QueryPython(string.Format("\"{0}\"", FindPythonScript("get_info.py")));
 
-            string[] parts = info.Split(new char[]{'\0'}, 4);
-            if (parts.Length != 3)
+            string[] parts = info.Split(new char[]{'\0'}, 5);
+            if (parts.Length != 4)
                 throw new Exception(string.Format("Bad output from python interpreter at {0}", exe_path));
 
             version = GetPythonVersion(parts[0]);
             global_site_folder = parts[1];
-            supported_tags = parts[2].Split('.');
+            is_64bit = (parts[2] == "8");
+            supported_tags = parts[3].Split('.');
         }
 
         public static PythonInstall FromPath(string installpath, Request request)
@@ -196,6 +200,8 @@ namespace PythonProvider
                             PythonInstall install = FromPath(path, request);
                             if (install != null)
                             {
+                                install.from_registry = true;
+                                install.reg_user = user;
                                 result.Add(install);
                                 request.Debug("Python::FindInstalledEnvironments found {0} in {1}", install.version, install.install_path);
                             }
@@ -207,11 +213,11 @@ namespace PythonProvider
             }
         }
 
-        public static List<PythonInstall> FindEnvironments(Request request)
+        private static List<PythonInstall> FindEnvironments(bool force_registry, Request request)
         {
             List<PythonInstall> result = new List<PythonInstall>();
             string requested_location = request.GetOptionValue("PythonLocation");
-            if (!string.IsNullOrEmpty(requested_location))
+            if (!force_registry && !string.IsNullOrEmpty(requested_location))
             {
                 PythonInstall install = FromPath(requested_location, request);
                 if (install != null)
@@ -228,6 +234,11 @@ namespace PythonProvider
                 FindEnvironments(result, false, true, seen_paths, request);
             }
             return result;
+        }
+
+        public static List<PythonInstall> FindEnvironments(Request request)
+        {
+            return FindEnvironments(false, request);
         }
 
         internal override string fastpath
@@ -447,6 +458,82 @@ namespace PythonProvider
             }
             File.Delete(filename);
             return success;
+        }
+
+        public override bool Uninstall(Request request)
+        {
+            if (exe_path == null)
+            {
+                return false;
+            }
+
+            if (!from_registry)
+            {
+                foreach (var package in FindEnvironments(true, request))
+                {
+                    if (package.exe_path == exe_path)
+                        return package.Uninstall(request);
+                }
+                request.Error(ErrorCategory.ObjectNotFound, name, "couldn't find python install in registry");
+                return false;
+            }
+
+            string arp_name = string.Format("Python {0} ({1}-bit)", version, is_64bit ? "64" : "32");
+            string alt_name = string.Format("Python {0}{1}", version, is_64bit ? " (64-bit)" : "");
+
+            using (RegistryKey basekey = RegistryKey.OpenBaseKey(
+                reg_user ? RegistryHive.CurrentUser : RegistryHive.LocalMachine,
+                is_64bit ? RegistryView.Registry64 : RegistryView.Registry32))
+            {
+                RegistryKey uninstallkey = basekey.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall");
+                if (uninstallkey != null)
+                {
+                    using (uninstallkey)
+                    {
+                        foreach (string name in uninstallkey.GetSubKeyNames())
+                        {
+                            using (var key = uninstallkey.OpenSubKey(name, false))
+                            {
+                                if ((key.GetValue("DisplayName") as string) != arp_name &&
+                                    (key.GetValue("DisplayName") as string) != alt_name)
+                                    continue;
+                                string cmd = key.GetValue("QuietUninstallString") as string;
+                                if (cmd == null)
+                                    cmd = key.GetValue("UninstallString") as string;
+                                if (cmd == null)
+                                    continue;
+                                ProcessStartInfo startinfo = new ProcessStartInfo();
+                                if (key.GetValueKind("WindowsInstaller") == RegistryValueKind.DWord &&
+                                    (int)key.GetValueKind("WindowsInstaller") != 0)
+                                {
+                                    startinfo.FileName = "msiexec.exe";
+                                    startinfo.Arguments = string.Format("/passive /uninstall \"{0}\"", name);
+                                }
+                                else
+                                {
+                                    startinfo.FileName = "cmd.exe";
+                                    startinfo.Arguments = string.Format("/s /c \"{0}\"", cmd);
+                                }
+                                if (reg_user)
+                                {
+                                    startinfo.UseShellExecute = false;
+                                }
+                                else
+                                {
+                                    startinfo.UseShellExecute = true;
+                                    startinfo.Verb = "runas";
+                                }
+                                Process proc = Process.Start(startinfo);
+                                proc.WaitForExit();
+                                return proc.ExitCode == 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            request.Error(ErrorCategory.ObjectNotFound, this.name, "couldn't find ARP entry for python install");
+            return false;
         }
     }
 }
