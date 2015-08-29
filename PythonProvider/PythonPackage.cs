@@ -422,6 +422,120 @@ namespace PythonProvider
             return true;
         }
 
+        public bool SatisfiesDependency(PythonInstall install, DistRequirement dep, Request request)
+        {
+            if (dep.condition != null)
+                // FIXME: handle this, somehow?
+                return true;
+            if (name != dep.name)
+                return false;
+            if (dep.has_version_specifier)
+            {
+                if (!dep.version_specifier.MatchesVersion(version))
+                    return false;
+            }
+            return true;
+        }
+
+        private Dictionary<string, PythonPackage> SimpleResolveDependencies(PythonInstall install, out DistRequirement failed_dependency, Request request)
+        {
+            Dictionary<string, PythonPackage> result = new Dictionary<string, PythonPackage>();
+            Queue<DistRequirement> to_resolve = new Queue<DistRequirement>();
+            var installed_packages = new Dictionary<string, PythonPackage>();
+            bool need_recheck=true; // True if we're [up|down]grading a package, and therefore may need to recheck deps
+
+            foreach (var package in install.FindInstalledPackages(null, null, request))
+            {
+                installed_packages[package.name] = package;
+            }
+
+            while (need_recheck)
+            {
+                need_recheck = false;
+
+                to_resolve.Clear();
+                foreach (var dep in requires_dist)
+                {
+                    request.Debug("Adding dependency {0}", dep.raw_string);
+                    to_resolve.Enqueue(dep);
+                }
+
+                result.Clear();
+
+                while (to_resolve.Count != 0)
+                {
+                    var dep = to_resolve.Dequeue();
+                    PythonPackage package;
+
+                    request.Debug("Examining dependency {0}", dep.raw_string);
+
+                    if (result.TryGetValue(dep.name, out package))
+                    {
+                        if (!package.SatisfiesDependency(install, dep, request))
+                        {
+                            failed_dependency = dep;
+                            return null;
+                        }
+                        request.Debug("Satisfied by package to install {0} {1}", package.name, package.version.ToString());
+                    }
+                    else
+                    {
+                        if (installed_packages.TryGetValue(dep.name, out package))
+                        {
+                            if (package.SatisfiesDependency(install, dep, request))
+                            {
+                                request.Debug("Satisfied by installed package {0} {1}", package.name, package.version.ToString());
+                                continue;
+                            }
+                            else
+                            {
+                                request.Debug("Not satisfied by installed package {0} {1}", package.name, package.version.ToString());
+                                need_recheck = true;
+                            }
+                        }
+
+                        // find newest version of package that satisfies dependency
+
+                        package = null;
+                        foreach (var candidate_package in PyPI.ExactSearch(dep.name, request))
+                        {
+                            request.Debug("Examining {0} {1}", candidate_package.name, candidate_package.version.ToString());
+                            if (candidate_package.SatisfiesDependency(install, dep, request))
+                            {
+                                package = candidate_package;
+                                break;
+                            }
+                        }
+
+                        if (package == null)
+                        {
+                            request.Debug("Cannot satisfy dependency");
+                            failed_dependency = dep;
+                            return null;
+                        }
+
+                        request.Debug("Selecting {0} {1}", package.name, package.version.ToString());
+
+                        // need to do another request to find dependencies
+                        package = PyPI.GetPackage(new Tuple<string, string>(package.source, package.sourceurl),
+                            package.name, package.version.raw_version_string);
+
+                        // add its dependencies to queue
+                        foreach (var dep2 in package.requires_dist)
+                        {
+                            request.Debug("Adding dependency {0}", dep2.raw_string);
+                            to_resolve.Enqueue(dep2);
+                        }
+
+                        result[package.name] = package;
+                    }
+                }
+            }
+
+            failed_dependency = default(DistRequirement);
+            return result;
+        }
+
         public bool CheckDependencies(PythonInstall install, out DistRequirement failed_dependency, Request request)
         {
             failed_dependency = new DistRequirement();
@@ -436,8 +550,7 @@ namespace PythonProvider
                 bool satisfied_dependency = false;
                 foreach (var package in installed_packages)
                 {
-                    if (dep.name == package.name &&
-                        (!dep.has_version_specifier || dep.version_specifier.MatchesVersion(package.version)))
+                    if (package.SatisfiesDependency(install, dep, request))
                     {
                         satisfied_dependency = true;
                         break;
@@ -476,17 +589,58 @@ namespace PythonProvider
                     Directory.Delete(tempdir);
                 }
             }
-            request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for this package type");
+            request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for package type {0}", download.packagetype);
             return false;
+        }
+
+        private static bool InstallDependencies(PythonInstall install, Dictionary<string, PythonPackage> deps, Request request)
+        {
+            while (deps.Count != 0)
+            {
+                var enumerator = deps.GetEnumerator();
+                enumerator.MoveNext();
+                PythonPackage package = enumerator.Current.Value;
+
+                bool unsatisfied_deps=true;
+                while (unsatisfied_deps)
+                {
+                    unsatisfied_deps = false;
+                    foreach (var dep in package.requires_dist)
+                    {
+                        if (deps.ContainsKey(dep.name))
+                        {
+                            // FIXME: Infinite loop if dep graph has cycles
+                            package = deps[dep.name];
+                            unsatisfied_deps = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!package.Install(install, request))
+                    return false;
+
+                deps.Remove(package.name);
+            }
+
+            return true;
         }
 
         public bool Install(PythonInstall install, Request request)
         {
             DistRequirement failed_dependency;
+            request.Debug("Installing {0} {1}", name, version.ToString());
             if (!CheckDependencies(install, out failed_dependency, request))
             {
-                request.Error(ErrorCategory.NotInstalled, name, string.Format("Dependency '{0}' not found.", failed_dependency.raw_string));
-                return false;
+                var deps = SimpleResolveDependencies(install, out failed_dependency, request);
+                if (deps == null)
+                {
+                    request.Error(ErrorCategory.NotInstalled, name, string.Format("Dependency '{0}' not found, unable to resolve automatically.", failed_dependency.raw_string));
+                    return false;
+                }
+
+                if (!InstallDependencies(install, deps, request))
+                    return false;
             }
             if (is_wheel)
             {

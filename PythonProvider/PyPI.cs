@@ -77,15 +77,23 @@ namespace PythonProvider
                     package.requires_dist.Add(DistRequirement.Parse(requirement.ToString()));
                 }
             }
+            if (((JObject)detailed_info["info"]).TryGetValue("requires", out requires_dist))
+            {
+                foreach (var requirement in requires_dist)
+                {
+                    package.requires_dist.Add(DistRequirement.Parse(requirement.ToString()));
+                }
+            }
             return package;
         }
 
         private static IEnumerable<PythonPackage> FilterPackageVersions(Tuple<string,string> source,
             string search_name, string package_name, HashSet<string> nonhidden_versions,
-            VersionIdentifier required, VersionIdentifier minimum, VersionIdentifier maximum, Request request)
+            VersionIdentifier required, VersionIdentifier minimum, VersionIdentifier maximum,
+            bool no_filter, Request request)
         {
             var detailed_info = GetDetailedPackageInfo(source, package_name, nonhidden_versions.ElementAt(0));
-            bool list_all_versions = (request.GetOptionValue("AllVersions") == "True");
+            bool list_all_versions = (no_filter || request.GetOptionValue("AllVersions") == "True");
             var release_listing = detailed_info.GetValue("releases") as JObject;
             List<string> sorted_versions = new List<string>();
             
@@ -209,7 +217,7 @@ namespace PythonProvider
                         if (package_name != null && package_name != package_info["name"].ToString())
                         {
                             foreach (var package in FilterPackageVersions(source, name, package_name,
-                                nonhidden_versions, required, minimum, maximum, request))
+                                nonhidden_versions, required, minimum, maximum, false, request))
                                 yield return package;
                             nonhidden_versions.Clear();
                         }
@@ -219,14 +227,14 @@ namespace PythonProvider
                     if (package_name != null)
                     {
                         foreach (var package in FilterPackageVersions(source, name, package_name,
-                            nonhidden_versions, required, minimum, maximum, request))
+                            nonhidden_versions, required, minimum, maximum, false, request))
                             yield return package;
                     }
                 }
             }
         }
 
-        private static IEnumerable<PythonPackage> ExactSearch(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
+        private static IEnumerable<PythonPackage> ExactSearch(IEnumerable<string> names, string requiredVersion, string minimumVersion, string maximumVersion, bool no_filter, Request request)
         {
             VersionIdentifier required = null, minimum = null, maximum = null;
 
@@ -239,7 +247,7 @@ namespace PythonProvider
 
             foreach (var source in GetSources(request))
             {
-                foreach (string exact_name in request.GetOptionValues("Name"))
+                foreach (string exact_name in names)
                 {
                     MemoryStream call_ms = new MemoryStream();
                     XmlWriter writer = XmlWriter.Create(call_ms);
@@ -272,11 +280,16 @@ namespace PythonProvider
                             versions.Add((string)version);
                         }
                         foreach (var package in FilterPackageVersions(source, exact_name, exact_name,
-                            versions, required, minimum, maximum, request))
+                            versions, required, minimum, maximum, no_filter, request))
                             yield return package;
                     }
                 }
             }
+        }
+
+        public static IEnumerable<PythonPackage> ExactSearch(string name, Request request)
+        {
+            return ExactSearch(new string[] { name }, null, null, null, true, request);
         }
 
         public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
@@ -285,7 +298,7 @@ namespace PythonProvider
 
             if (string.IsNullOrWhiteSpace(name) || name.ToLowerInvariant() != "python")
             {
-                foreach (var package in ExactSearch(name, requiredVersion, minimumVersion, maximumVersion, request))
+                foreach (var package in ExactSearch(request.GetOptionValues("Name"), requiredVersion, minimumVersion, maximumVersion, false, request))
                 {
                     exact_match = true;
                     yield return package;
