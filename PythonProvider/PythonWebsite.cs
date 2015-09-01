@@ -44,7 +44,7 @@ namespace PythonProvider
             return (candidate.Compare(current) > 0);
         }
 
-        public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
+        public static IEnumerable<PythonPackage> Search(string name, string requiredVersion, string minimumVersion, string maximumVersion, bool list_all_versions, Request request)
         {
             if (string.IsNullOrWhiteSpace(name) || name.ToLowerInvariant() == "python")
             {
@@ -55,8 +55,6 @@ namespace PythonProvider
                 VersionIdentifier pythonVersion = string.IsNullOrEmpty(pythonVersionStr) ? null : new VersionIdentifier(pythonVersionStr);
                 Dictionary<string, VersionIdentifier> best_versions = new Dictionary<string,VersionIdentifier>();
                 Dictionary<string, JObject> best_releases = new Dictionary<string,JObject>();
-
-                bool list_all_versions = (request.GetOptionValue("AllVersions") == "True");
 
                 int filter_version = -1;
                 if (required != null)

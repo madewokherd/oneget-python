@@ -328,6 +328,34 @@ namespace PythonProvider
             return true;
         }
 
+        private bool CanInstall(PythonInstall install, PackageDownload download, bool install_64bit, out bool install_specific, Request request)
+        {
+            install_specific = false;
+            if (download.packagetype == "bdist_wheel")
+            {
+                string tag = download.basename;
+                if (tag.EndsWith(".whl"))
+                {
+                    tag = tag.Substring(0, tag.Length - 4);
+                }
+                int platform_dash = tag.LastIndexOf('-');
+                if (platform_dash <= 0) return false;
+                int abi_dash = tag.LastIndexOf('-', platform_dash - 1);
+                if (abi_dash <= 0) return false;
+                int python_dash = tag.LastIndexOf('-', abi_dash - 1);
+                if (python_dash <= 0) return false;
+                tag = tag.Substring(python_dash + 1);
+
+                install_specific = true;
+
+                if (install.CompatibleWithTag(tag, install_64bit))
+                    return true;
+
+                return false;
+            }
+            return true;
+        }
+
         public bool CanInstall(PythonInstall install, Request request)
         {
             if (is_wheel)
@@ -349,6 +377,36 @@ namespace PythonProvider
                 {
                     bool install_specific;
                     if (CanInstall(install, download, out install_specific, request))
+                        return true;
+                    if (install_specific)
+                        any_install_specific_download = true;
+                }
+                return !any_install_specific_download;
+            }
+            return true;
+        }
+
+        public bool CanInstall(PythonInstall install, bool install_64bit, Request request)
+        {
+            if (is_wheel)
+            {
+                if (this.tags == null)
+                    return true;
+                foreach (var tag in this.tags)
+                {
+                    if (install.CompatibleWithTag(tag, install_64bit))
+                        return true;
+                }
+                return false;
+            }
+            else if (source != null)
+            {
+                bool any_install_specific_download = false;
+
+                foreach (var download in downloads)
+                {
+                    bool install_specific;
+                    if (CanInstall(install, download, install_64bit, out install_specific, request))
                         return true;
                     if (install_specific)
                         any_install_specific_download = true;

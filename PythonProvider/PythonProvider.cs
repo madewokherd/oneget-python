@@ -83,7 +83,7 @@ namespace PythonProvider
         public void FindPackage(string name, string requiredVersion, string minimumVersion, string maximumVersion, int id, Request request)
         {
             request.Debug("Calling '{0}::FindPackage'", ProviderName);
-            foreach (var package in PythonWebsite.Search(name, requiredVersion, minimumVersion, maximumVersion, request))
+            foreach (var package in PythonWebsite.Search(name, requiredVersion, minimumVersion, maximumVersion, (request.GetOptionValue("AllVersions") == "True"), request))
             {
                 package.YieldSelf(request);
             }
@@ -111,6 +111,8 @@ namespace PythonProvider
                 ((PythonInstall)package).Install(request);
                 return;
             }
+            bool retried = false;
+            retry:
             List<PythonInstall> usableinstalls = new List<PythonInstall>();
             List<PythonInstall> unusableinstalls = new List<PythonInstall>();
             foreach (var candidateinstall in PythonInstall.FindEnvironments(request))
@@ -130,7 +132,48 @@ namespace PythonProvider
             }
             else if (usableinstalls.Count == 0)
             {
-                request.Error(ErrorCategory.NotImplemented, package.name, "TODO: bootstrap a python?");
+                // Need to install a Python
+                if (retried)
+                {
+                    request.Error(ErrorCategory.NotImplemented, package.name, "Failed to install a Python interpreter");
+                    return;
+                }
+
+                List<PythonPackage> candidate_pythons = new List<PythonPackage>(
+                    PythonWebsite.Search("Python", null, null, null, true, request));
+                candidate_pythons.Sort(new PackageVersionComparer());
+
+                bool installed=false;
+
+                for (int i=candidate_pythons.Count-1; i>=0; i--)
+                {
+                    if (Environment.Is64BitOperatingSystem &&
+                        ((PythonInstall)candidate_pythons[i]).CanInstall(true, request) &&
+                        package.CanInstall((PythonInstall)candidate_pythons[i], true, request))
+                    {
+                        ((PythonInstall)candidate_pythons[i]).Install(true, request);
+                        installed = true;
+                        break;
+                    }
+                    else if (((PythonInstall)candidate_pythons[i]).CanInstall(false, request) && 
+                        package.CanInstall((PythonInstall)candidate_pythons[i], true, request))
+                    {
+                        ((PythonInstall)candidate_pythons[i]).Install(false, request);
+                        installed = true;
+                        break;
+                    }
+                }
+
+                if (installed)
+                {
+                    retried = true;
+                    goto retry;
+                }
+                else
+                {
+                    request.Error(ErrorCategory.NotImplemented, package.name, "Couldn't find a Python interpreter to install for this");
+                    return;
+                }
             }
             else if (usableinstalls.Count > 1)
             {

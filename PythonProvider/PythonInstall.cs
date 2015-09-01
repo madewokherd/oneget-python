@@ -148,6 +148,30 @@ namespace PythonProvider
             supported_tags = parts[3].Split('.');
         }
 
+        private string[] GetSupportedTags(bool install_64bit)
+        {
+            if (supported_tags != null)
+                return supported_tags;
+
+            List<string> result = new List<string>();
+            string majorversion = version.release[0].ToString();
+            int minorversion = version.release[1];
+            if (install_64bit)
+                result.Add(string.Format("cp{0}{1}-none-win_amd64", majorversion, minorversion));
+            else
+                result.Add(string.Format("cp{0}{1}-none-win32", majorversion, minorversion));
+            result.Add(string.Format("cp{0}{1}-none-any", majorversion, minorversion));
+            result.Add(string.Format("cp{0}-none-any", majorversion));
+            for (int i=minorversion-1; i>=0; i--)
+                result.Add(string.Format("cp{0}{1}-none-any", majorversion, i));
+            result.Add(string.Format("py{0}{1}-none-any", majorversion, minorversion));
+            result.Add(string.Format("py{0}-none-any", majorversion));
+            for (int i = minorversion - 1; i >= 0; i--)
+                result.Add(string.Format("py{0}{1}-none-any", majorversion, i));
+            supported_tags = result.ToArray();
+            return supported_tags;
+        }
+
         public static PythonInstall FromPath(string installpath, Request request)
         {
             try
@@ -299,6 +323,25 @@ namespace PythonProvider
             return false;
         }
 
+        public bool CompatibleWithTag(string tag, bool install_64bit)
+        {
+            string[] tag_bits = tag.Split('-');
+
+            string[] supported_tags = GetSupportedTags(install_64bit);
+
+            foreach (var python_tag in tag_bits[0].Split('.'))
+                foreach (var abi_tag in tag_bits[1].Split('.'))
+                    foreach (var platform_tag in tag_bits[2].Split('.'))
+                    {
+                        string specific_tag = string.Format("{0}-{1}-{2}", python_tag, abi_tag, platform_tag);
+                        foreach (var supported_tag in supported_tags)
+                            if (supported_tag == specific_tag)
+                                return true;
+                    }
+
+            return false;
+        }
+
         public bool NeedAdminToWrite()
         {
             WindowsIdentity current_identity = WindowsIdentity.GetCurrent();
@@ -382,17 +425,15 @@ namespace PythonProvider
             return true;
         }
 
-        public bool Install(Request request)
+        private JObject FindDownload(bool install_64bit, out bool is_msi, Request request)
         {
             if (web_resource == null)
             {
                 throw new InvalidOperationException("Installing an existing install of Python doesn't make sense");
             }
-            //bool user_scope = false;
-            bool install_64bit = Environment.Is64BitOperatingSystem;
 
-            JObject download=null;
-            bool is_msi = false;
+            JObject download = null;
+            is_msi = false;
             foreach (JObject candidate in PythonWebsite.DownloadsFromWebResource(web_resource, request))
             {
                 string name = candidate["name"].ToString();
@@ -427,10 +468,26 @@ namespace PythonProvider
                     }
                 }
             }
+            return download;
+        }
+
+        public bool CanInstall(bool install_64bit, Request request)
+        {
+            bool dummy;
+            return (FindDownload(install_64bit, out dummy, request) != null);
+        }
+
+        public bool Install(bool install_64bit, Request request)
+        {
+            //bool user_scope = false;
+
+            bool is_msi;
+
+            JObject download = FindDownload(install_64bit, out is_msi, request);
 
             if (download == null)
             {
-                request.Error(ErrorCategory.ResourceUnavailable, "Python", "Cannot find installer download");
+                request.Error(ErrorCategory.ResourceUnavailable, "Python", "Cannot find installer download for Python {0}", version.ToString());
                 return false;
             }
 
@@ -458,6 +515,12 @@ namespace PythonProvider
             }
             File.Delete(filename);
             return success;
+        }
+
+        public bool Install(Request request)
+        {
+            bool install_64bit = Environment.Is64BitOperatingSystem;
+            return Install(install_64bit, request);
         }
 
         public override bool Uninstall(Request request)

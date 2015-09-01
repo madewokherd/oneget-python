@@ -70,6 +70,7 @@
     <Compile Include="Compression\Zip\ZipInfo.cs" />
     <Compile Include="Compression\Zip\ZipPacker.cs" />
     <Compile Include="Compression\Zip\ZipUnpacker.cs" />
+    <Compile Include="PackageVersionComparer.cs" />
     <Compile Include="PyPI.cs" />
     <Compile Include="PythonInstall.cs" />
     <Compile Include="PythonPackage.cs" />
