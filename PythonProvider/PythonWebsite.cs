@@ -51,6 +51,8 @@ namespace PythonProvider
                 VersionIdentifier required = string.IsNullOrEmpty(requiredVersion) ? null : new VersionIdentifier(requiredVersion);
                 VersionIdentifier minimum = string.IsNullOrEmpty(minimumVersion) ? null : new VersionIdentifier(minimumVersion);
                 VersionIdentifier maximum = string.IsNullOrEmpty(maximumVersion) ? null : new VersionIdentifier(maximumVersion);
+                string pythonVersionStr = request.GetOptionValue("PythonVersion");
+                VersionIdentifier pythonVersion = string.IsNullOrEmpty(pythonVersionStr) ? null : new VersionIdentifier(pythonVersionStr);
                 Dictionary<string, VersionIdentifier> best_versions = new Dictionary<string,VersionIdentifier>();
                 Dictionary<string, JObject> best_releases = new Dictionary<string,JObject>();
 
@@ -73,7 +75,8 @@ namespace PythonProvider
                     var release_version = new VersionIdentifier(release_name.Substring(7));
                     if ((required == null || required.Compare(release_version) == 0) &&
                         (minimum == null || minimum.Compare(release_version) <= 0) &&
-                        (maximum == null || maximum.Compare(release_version) >= 0))
+                        (maximum == null || maximum.Compare(release_version) >= 0) &&
+                        (pythonVersion == null || pythonVersion.IsPrefix(release_version)))
                     {
                         if (list_all_versions)
                         {

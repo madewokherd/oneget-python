@@ -55,6 +55,7 @@ namespace PythonProvider
                 case "source":
                     break;
                 case "package":
+                    request.YieldDynamicOption("PythonVersion", "String", false);
                     break;
             }
         }
