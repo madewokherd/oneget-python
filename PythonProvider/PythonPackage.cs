@@ -265,7 +265,7 @@ namespace PythonProvider
                 parts = parts[2].Split(new char[] { '/' });
                 string name = parts[0];
                 string version = parts[1];
-                return PyPI.GetPackage(new Tuple<string,string>(source, sourceurl), name, version);
+                return PyPI.GetPackage(new Tuple<string,string>(source, sourceurl), name, version, request);
             }
             else if (fastreference.StartsWith("archive:"))
             {
@@ -576,7 +576,7 @@ namespace PythonProvider
 
                         // need to do another request to find dependencies
                         package = PyPI.GetPackage(new Tuple<string, string>(package.source, package.sourceurl),
-                            package.name, package.version.raw_version_string);
+                            package.name, package.version.raw_version_string, request);
 
                         // add its dependencies to queue
                         foreach (var dep2 in package.requires_dist)

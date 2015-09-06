@@ -31,10 +31,11 @@ namespace PythonProvider
             return result.GetResponse();
         }
 
-        private static JObject GetDetailedPackageInfo(Tuple<string, string> source, string name, string version)
+        private static JObject GetDetailedPackageInfo(Tuple<string, string> source, string name, string version, Request request)
         {
             // Using JSON api here because it provides more info in one request than xmlrpc
             string uri = String.Format("{0}/{1}/{2}/json", source.Item2, Uri.EscapeUriString(name), Uri.EscapeUriString(version));
+            request.Debug("FETCHING: {0}", uri);
             WebResponse response = WebRequest.Create(uri).GetResponse();
             HttpWebResponse httpresponse = response as HttpWebResponse;
             StreamReader reader = new StreamReader(response.GetResponseStream());
@@ -59,9 +60,9 @@ namespace PythonProvider
             return result;
         }
 
-        public static PythonPackage GetPackage(Tuple<string, string> source, string name, string version)
+        public static PythonPackage GetPackage(Tuple<string, string> source, string name, string version, Request request)
         {
-            var detailed_info = GetDetailedPackageInfo(source, name, version);
+            var detailed_info = GetDetailedPackageInfo(source, name, version, request);
             PythonPackage package = new PythonPackage(name);
             package.version = new VersionIdentifier(version);
             package.summary = detailed_info["info"]["summary"].ToString();
@@ -92,7 +93,7 @@ namespace PythonProvider
             VersionIdentifier required, VersionIdentifier minimum, VersionIdentifier maximum,
             bool no_filter, Request request)
         {
-            var detailed_info = GetDetailedPackageInfo(source, package_name, nonhidden_versions.ElementAt(0));
+            var detailed_info = GetDetailedPackageInfo(source, package_name, nonhidden_versions.ElementAt(0), request);
             bool list_all_versions = (no_filter || request.GetOptionValue("AllVersions") == "True");
             var release_listing = detailed_info.GetValue("releases") as JObject;
             List<string> sorted_versions = new List<string>();
