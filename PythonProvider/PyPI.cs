@@ -1,10 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 using OneGet.Sdk;
 using Newtonsoft.Json.Linq;
@@ -13,6 +12,8 @@ namespace PythonProvider
 {
     class PyPI
     {
+        private static ConcurrentDictionary<Tuple<string, string, string, string>, JObject> detailed_info_cache = new ConcurrentDictionary<Tuple<string, string, string, string>, JObject>();
+
         public static IEnumerable<Tuple<string, string>> GetSources(Request request)
         {
             // FIXME: Add source management
@@ -33,6 +34,10 @@ namespace PythonProvider
 
         private static JObject GetDetailedPackageInfo(Tuple<string, string> source, string name, string version, Request request)
         {
+            JObject result;
+            var key = new Tuple<string, string, string, string>(source.Item1, source.Item2, name, version);
+            if (detailed_info_cache.TryGetValue(key, out result))
+                return result;
             // Using JSON api here because it provides more info in one request than xmlrpc
             string uri = String.Format("{0}/{1}/{2}/json", source.Item2, Uri.EscapeUriString(name), Uri.EscapeUriString(version));
             request.Debug("FETCHING: {0}", uri);
@@ -41,7 +46,9 @@ namespace PythonProvider
             StreamReader reader = new StreamReader(response.GetResponseStream());
             string json = reader.ReadToEnd();
             reader.Close();
-            return JObject.Parse(json);
+            result = JObject.Parse(json);
+            detailed_info_cache.TryAdd(key, result);
+            return result;
         }
 
         private static PackageDownload[] ParseUrls(JToken token)
@@ -139,6 +146,7 @@ namespace PythonProvider
                     continue;
                 if (maximum != null && maximum.Compare(candidate_version) < 0)
                     continue;
+                // FIXME: Mark this package as incomplete, fetch the proper package when installing or checking deps.
                 PythonPackage package = new PythonPackage(package_name);
                 package.version = new VersionIdentifier(version);
                 package.summary = detailed_info["info"]["summary"].ToString();
