@@ -28,18 +28,19 @@ namespace PythonProvider
         {
         }
 
-        private string QueryPython(string arguments)
+        private string QueryPython(string arguments, Request request)
         {
             ProcessStartInfo startinfo = new ProcessStartInfo();
             startinfo.FileName = exe_path;
             startinfo.Arguments = arguments;
             startinfo.RedirectStandardOutput = true;
             startinfo.UseShellExecute = false;
+            request.Debug("Running command: {0} {1}", startinfo.FileName, startinfo.Arguments);
             Process proc = Process.Start(startinfo);
             return proc.StandardOutput.ReadToEnd();
         }
 
-        public int InstallWheel(string filename)
+        public int InstallWheel(string filename, Request request)
         {
             ProcessStartInfo startinfo = new ProcessStartInfo();
             startinfo.FileName = exe_path;
@@ -53,12 +54,13 @@ namespace PythonProvider
             {
                 startinfo.UseShellExecute = false;
             }
+            request.Debug("Running command{0}: {1} {2}", startinfo.UseShellExecute ? " as admin" : "", startinfo.FileName, startinfo.Arguments);
             Process proc = Process.Start(startinfo);
             proc.WaitForExit();
             return proc.ExitCode;
         }
 
-        public int UninstallDistinfo(string path)
+        public int UninstallDistinfo(string path, Request request)
         {
             ProcessStartInfo startinfo = new ProcessStartInfo();
             startinfo.FileName = exe_path;
@@ -72,6 +74,7 @@ namespace PythonProvider
             {
                 startinfo.UseShellExecute = false;
             }
+            request.Debug("Running command{0}: {1} {2}", startinfo.UseShellExecute ? " as admin" : "", startinfo.FileName, startinfo.Arguments);
             Process proc = Process.Start(startinfo);
             proc.WaitForExit();
             return proc.ExitCode;
@@ -134,9 +137,9 @@ namespace PythonProvider
             return result;
         }
 
-        private void ReadInterpreterInfo()
+        private void ReadInterpreterInfo(Request request)
         {
-            string info = QueryPython(string.Format("\"{0}\"", FindPythonScript("get_info.py")));
+            string info = QueryPython(string.Format("\"{0}\"", FindPythonScript("get_info.py")), request);
 
             string[] parts = info.Split(new char[]{'\0'}, 5);
             if (parts.Length != 4)
@@ -187,7 +190,7 @@ namespace PythonProvider
                     result.install_path = Path.GetDirectoryName(installpath);
                     result.exe_path = installpath;
                 }
-                result.ReadInterpreterInfo();
+                result.ReadInterpreterInfo(request);
                 string requested_version_str = request.GetOptionValue("PythonVersion");
                 if (!string.IsNullOrEmpty(requested_version_str))
                 {

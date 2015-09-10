@@ -711,7 +711,7 @@ namespace PythonProvider
             }
             if (is_wheel)
             {
-                if (install.InstallWheel(archive_path) != 0)
+                if (install.InstallWheel(archive_path, request) != 0)
                 {
                     request.Error(ErrorCategory.NotSpecified, name, "wheel install failed");
                     return false;
@@ -747,7 +747,7 @@ namespace PythonProvider
         {
             if (distinfo_path != null)
             {
-                return install.UninstallDistinfo(distinfo_path) == 0;
+                return install.UninstallDistinfo(distinfo_path, request) == 0;
             }
             else
             {
