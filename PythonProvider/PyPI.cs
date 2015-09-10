@@ -202,7 +202,7 @@ namespace PythonProvider
             {
                 if (request.IsCanceled)
                     break;
-                request.Debug("Python::Search asking {0}", source.Item1);
+                request.Debug("Python::ContainsSearch asking {0}", source.Item1);
                 using (var response = DoWebRequest(source, call, request))
                 {
                     var search_response = ParseResponse(response.GetResponseStream(), request) as List<object>;
@@ -276,7 +276,7 @@ namespace PythonProvider
 
                     using (var response = DoWebRequest(source, call, request))
                     {
-                        request.Debug("Python::Search asking {0} about {1}", source.Item1, exact_name);
+                        request.Debug("Python::ExactSearch asking {0} about {1}", source.Item1, exact_name);
                         var search_response = ParseResponse(response.GetResponseStream(), request) as List<object>;
                         if (search_response == null || search_response.Count == 0)
                         {
