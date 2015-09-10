@@ -146,7 +146,6 @@ namespace PythonProvider
                     continue;
                 if (maximum != null && maximum.Compare(candidate_version) < 0)
                     continue;
-                // FIXME: Mark this package as incomplete, fetch the proper package when installing or checking deps.
                 PythonPackage package = new PythonPackage(package_name);
                 package.version = new VersionIdentifier(version);
                 package.summary = detailed_info["info"]["summary"].ToString();
@@ -154,6 +153,7 @@ namespace PythonProvider
                 package.sourceurl = source.Item2;
                 package.search_key = search_name;
                 package.downloads = ParseUrls(uris);
+                package.incomplete_metadata = true;
                 yield return package;
                 if (!list_all_versions)
                     break;

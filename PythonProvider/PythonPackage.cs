@@ -73,6 +73,8 @@ namespace PythonProvider
 
         public List<DistRequirement> requires_dist;
 
+        public bool incomplete_metadata; // If true, we can only rely on name, version, source, and downloads
+
         //wheel metadata
         private string wheel_version;
         private List<string> tags;
@@ -575,8 +577,11 @@ namespace PythonProvider
                         request.Debug("Selecting {0} {1}", package.name, package.version.ToString());
 
                         // need to do another request to find dependencies
-                        package = PyPI.GetPackage(new Tuple<string, string>(package.source, package.sourceurl),
-                            package.name, package.version.raw_version_string, request);
+                        if (package.incomplete_metadata)
+                        {
+                            package = PyPI.GetPackage(new Tuple<string, string>(package.source, package.sourceurl),
+                                package.name, package.version.raw_version_string, request);
+                        }
 
                         // add its dependencies to queue
                         foreach (var dep2 in package.requires_dist)
@@ -688,6 +693,10 @@ namespace PythonProvider
         {
             DistRequirement failed_dependency;
             request.Debug("Installing {0} {1}", name, version.ToString());
+            if (incomplete_metadata)
+            {
+                return PyPI.GetPackage(new Tuple<string, string>(source, sourceurl), name, version.raw_version_string, request).Install(install, request);
+            }
             if (!CheckDependencies(install, out failed_dependency, request))
             {
                 var deps = SimpleResolveDependencies(install, out failed_dependency, request);
