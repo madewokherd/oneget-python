@@ -294,6 +294,7 @@ namespace PythonProvider
 
         internal void YieldSelf(Request request)
         {
+            request.Debug("YIELDING: {0} {1}", name, version.ToString());
             request.YieldSoftwareIdentity(fastpath, name, version == null ? "unknown" : version.ToString(), "pep440", summary ?? "", source ?? archive_path ?? "", search_key ?? "", "", "");
         }
 

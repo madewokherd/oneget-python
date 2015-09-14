@@ -13,8 +13,9 @@ namespace PythonProvider
     {
         private static string api_url = "https://www.python.org/api/v1";
 
-        private static JObject DoWebRequest(string url)
+        private static JObject DoWebRequest(string url, Request request)
         {
+            request.Debug("FETCHING: {0}", url);
             HttpWebRequest result = (HttpWebRequest)WebRequest.Create(url);
             result.Accept = "application/json";
             WebResponse response = result.GetResponse();
@@ -63,7 +64,7 @@ namespace PythonProvider
                 string version_query_string = filter_version == -1 ? "" : string.Format("&version={0}", filter_version);
 
                 string url = string.Format("{0}/downloads/release/?limit=0{1}", api_url, version_query_string);
-                JObject result = DoWebRequest(url);
+                JObject result = DoWebRequest(url, request);
 
                 foreach (JObject release in result["objects"])
                 {
@@ -107,7 +108,7 @@ namespace PythonProvider
         public static PythonInstall PackageFromWebResource(string resource, Request request)
         {
             string url = string.Format("{0}/downloads/release/{1}/", api_url, resource);
-            JObject result = DoWebRequest(url);
+            JObject result = DoWebRequest(url, request);
 
             return FromReleaseRes(result, request);
         }
@@ -115,7 +116,7 @@ namespace PythonProvider
         public static IEnumerable<JObject> DownloadsFromWebResource(string resource, Request request)
         {
             string url = string.Format("{0}/downloads/release_file/?release={1}&limit=0", api_url, resource);
-            JObject result = DoWebRequest(url);
+            JObject result = DoWebRequest(url, request);
 
             foreach (JObject download in result["objects"])
             {
