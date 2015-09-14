@@ -526,6 +526,43 @@ namespace PythonProvider
             return Install(install_64bit, request);
         }
 
+        private bool MaybeUninstallArp(RegistryKey key, string key_name, string arp_name, string alt_name, bool user, out bool succeeded, Request request)
+        {
+            succeeded = false;
+            if ((key.GetValue("DisplayName") as string) != arp_name &&
+                (key.GetValue("DisplayName") as string) != alt_name)
+                return false;
+            string cmd = key.GetValue("QuietUninstallString") as string;
+            if (cmd == null)
+                cmd = key.GetValue("UninstallString") as string;
+            if (cmd == null)
+                return false;
+            ProcessStartInfo startinfo = new ProcessStartInfo();
+            if ((key.GetValue("WindowsInstaller", 0, RegistryValueOptions.DoNotExpandEnvironmentNames) as int?) != 0)
+            {
+                startinfo.FileName = "msiexec.exe";
+                startinfo.Arguments = string.Format("/passive /uninstall \"{0}\"", key_name);
+            }
+            else
+            {
+                startinfo.FileName = "cmd.exe";
+                startinfo.Arguments = string.Format("/s /c \"{0}\"", cmd);
+            }
+            if (user)
+            {
+                startinfo.UseShellExecute = false;
+            }
+            else
+            {
+                startinfo.UseShellExecute = true;
+                startinfo.Verb = "runas";
+            }
+            Process proc = Process.Start(startinfo);
+            proc.WaitForExit();
+            succeeded = (proc.ExitCode == 0);
+            return true;
+        }
+
         public override bool Uninstall(Request request)
         {
             if (exe_path == null)
@@ -546,6 +583,7 @@ namespace PythonProvider
 
             string arp_name = string.Format("Python {0} ({1}-bit)", version, is_64bit ? "64" : "32");
             string alt_name = string.Format("Python {0}{1}", version, is_64bit ? " (64-bit)" : "");
+            bool succeeded;
 
             using (RegistryKey basekey = RegistryKey.OpenBaseKey(
                 reg_user ? RegistryHive.CurrentUser : RegistryHive.LocalMachine,
@@ -556,42 +594,38 @@ namespace PythonProvider
                 {
                     using (uninstallkey)
                     {
-                        foreach (string name in uninstallkey.GetSubKeyNames())
+                        foreach (string key_name in uninstallkey.GetSubKeyNames())
                         {
-                            using (var key = uninstallkey.OpenSubKey(name, false))
+                            using (var key = uninstallkey.OpenSubKey(key_name, false))
                             {
-                                if ((key.GetValue("DisplayName") as string) != arp_name &&
-                                    (key.GetValue("DisplayName") as string) != alt_name)
-                                    continue;
-                                string cmd = key.GetValue("QuietUninstallString") as string;
-                                if (cmd == null)
-                                    cmd = key.GetValue("UninstallString") as string;
-                                if (cmd == null)
-                                    continue;
-                                ProcessStartInfo startinfo = new ProcessStartInfo();
-                                if (key.GetValueKind("WindowsInstaller") == RegistryValueKind.DWord &&
-                                    (int)key.GetValueKind("WindowsInstaller") != 0)
+                                if (key != null && MaybeUninstallArp(key, key_name, arp_name, alt_name, reg_user, out succeeded, request))
+                                    return succeeded;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (reg_user)
+            {
+                /* MSI's "user" install can end up in HKLM because I don't know */
+
+                using (RegistryKey basekey = RegistryKey.OpenBaseKey(
+                    RegistryHive.LocalMachine,
+                    is_64bit ? RegistryView.Registry64 : RegistryView.Registry32))
+                {
+                    RegistryKey uninstallkey = basekey.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall");
+                    if (uninstallkey != null)
+                    {
+                        using (uninstallkey)
+                        {
+                            foreach (string key_name in uninstallkey.GetSubKeyNames())
+                            {
+                                using (var key = uninstallkey.OpenSubKey(key_name, false))
                                 {
-                                    startinfo.FileName = "msiexec.exe";
-                                    startinfo.Arguments = string.Format("/passive /uninstall \"{0}\"", name);
+                                    if (key != null && MaybeUninstallArp(key, key_name, arp_name, alt_name, false, out succeeded, request))
+                                        return succeeded;
                                 }
-                                else
-                                {
-                                    startinfo.FileName = "cmd.exe";
-                                    startinfo.Arguments = string.Format("/s /c \"{0}\"", cmd);
-                                }
-                                if (reg_user)
-                                {
-                                    startinfo.UseShellExecute = false;
-                                }
-                                else
-                                {
-                                    startinfo.UseShellExecute = true;
-                                    startinfo.Verb = "runas";
-                                }
-                                Process proc = Process.Start(startinfo);
-                                proc.WaitForExit();
-                                return proc.ExitCode == 0;
                             }
                         }
                     }
