@@ -159,14 +159,17 @@ namespace PythonProvider
             List<string> result = new List<string>();
             string majorversion = version.release[0].ToString();
             int minorversion = version.release[1];
+            string platform;
             if (install_64bit)
-                result.Add(string.Format("cp{0}{1}-none-win_amd64", majorversion, minorversion));
+                platform = "win_amd64";
             else
-                result.Add(string.Format("cp{0}{1}-none-win32", majorversion, minorversion));
+                platform = "win32";
+            result.Add(string.Format("cp{0}{1}-none-{2}", majorversion, minorversion, platform));
             result.Add(string.Format("cp{0}{1}-none-any", majorversion, minorversion));
             result.Add(string.Format("cp{0}-none-any", majorversion));
             for (int i=minorversion-1; i>=0; i--)
                 result.Add(string.Format("cp{0}{1}-none-any", majorversion, i));
+            result.Add(string.Format("py{0}-none-{1}", majorversion, platform));
             result.Add(string.Format("py{0}{1}-none-any", majorversion, minorversion));
             result.Add(string.Format("py{0}-none-any", majorversion));
             for (int i = minorversion - 1; i >= 0; i--)
