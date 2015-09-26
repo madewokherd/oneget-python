@@ -1,16 +1,14 @@
 
-
-[tool]
-
-
-[signatures]
-keyring
+[:python_version=="2.6"]
+argparse
 
 [faster-signatures]
 ed25519ll
 
-[:python_version=="2.6"]
-argparse
+[signatures]
+keyring
 
 [signatures:sys_platform!="win32"]
 pyxdg
+
+[tool]

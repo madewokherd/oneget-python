@@ -1,8 +1,8 @@
 Metadata-Version: 1.1
 Name: wheel
-Version: 0.24.0
+Version: 0.26.0
 Summary: A built-package format for Python.
-Home-page: http://bitbucket.org/pypa/wheel/
+Home-page: https://bitbucket.org/pypa/wheel/
 Author: Daniel Holth
 Author-email: dholth@fastmail.fm
 License: MIT
@@ -49,6 +49,19 @@ Description: Wheel
         
         
         
+        0.26.0
+        ======
+        - Fix multiple entrypoint comparison failure on Python 3 (Issue #148)
+        
+        0.25.0
+        ======
+        - Add Python 3.5 to tox configuration
+        - Deterministic (sorted) metadata
+        - Fix tagging for Python 3.5 compatibility
+        - Support py2-none-'arch' and py3-none-'arch' tags
+        - Treat data-only wheels as pure
+        - Write to temporary file and rename when using wheel install --force
+        
         0.24.0
         ======
         - The python tag used for pure-python packages is now .pyN (major version
@@ -65,7 +78,7 @@ Description: Wheel
         
         0.23.0
         ======
-        - Compatibiltiy tag flags added to the bdist_wheel command
+        - Compatibility tag flags added to the bdist_wheel command
         - sdist should include files necessary for tests
         - 'wheel convert' can now also convert unpacked eggs to wheel
         - Rename pydist.json to metadata.json to avoid stepping on the PEP

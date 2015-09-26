@@ -90,7 +90,7 @@ class bdist_wheel(Command):
         self.dist_dir = None
         self.distinfo_dir = None
         self.egginfo_dir = None
-        self.root_is_purelib = None
+        self.root_is_pure = None
         self.skip_build = None
         self.relative = False
         self.owner = None
@@ -110,7 +110,8 @@ class bdist_wheel(Command):
         self.set_undefined_options('bdist',
                                    *zip(need_options, need_options))
 
-        self.root_is_purelib = self.distribution.is_pure()
+        self.root_is_pure = not (self.distribution.has_ext_modules()
+                                 or self.distribution.has_c_libraries())
 
         # Support legacy [wheel] section for setting universal
         wheel = self.distribution.get_option_dict('wheel')
@@ -129,7 +130,7 @@ class bdist_wheel(Command):
     def get_tag(self):
         supported_tags = pep425tags.get_supported()
 
-        if self.distribution.is_pure():
+        if self.root_is_pure:
             if self.universal:
                 impl = 'py2.py3'
             else:
@@ -148,7 +149,7 @@ class bdist_wheel(Command):
             # sys.pypy_version_info.minor)
             abi_tag = sysconfig.get_config_vars().get('SOABI', 'none')
             if abi_tag.startswith('cpython-'):
-                abi_tag = 'cp' + abi_tag.rsplit('-', 1)[-1]
+                abi_tag = 'cp' + abi_tag.split('-')[1]
 
             tag = (impl_name + impl_ver, abi_tag, plat_name)
             # XXX switch to this alternate implementation for non-pure:
@@ -203,7 +204,7 @@ class bdist_wheel(Command):
             self.install_libbase = self.install_lib = basedir_observed
 
         setattr(install,
-                'install_purelib' if self.root_is_purelib else 'install_platlib',
+                'install_purelib' if self.root_is_pure else 'install_platlib',
                 basedir_observed)
 
         logger.info("installing to %s", self.bdist_dir)
@@ -255,7 +256,7 @@ class bdist_wheel(Command):
         msg = Message()
         msg['Wheel-Version'] = '1.0'  # of the spec
         msg['Generator'] = generator
-        msg['Root-Is-Purelib'] = str(self.root_is_purelib).lower()
+        msg['Root-Is-Purelib'] = str(self.root_is_pure).lower()
 
         # Doesn't work for bdist_wininst
         impl_tag, abi_tag, plat_tag = self.get_tag()
@@ -421,7 +422,8 @@ class bdist_wheel(Command):
 
         def walk():
             for dir, dirs, files in os.walk(bdist_dir):
-                for f in files:
+                dirs.sort()
+                for f in sorted(files):
                     yield os.path.join(dir, f)
 
         def skip(path):

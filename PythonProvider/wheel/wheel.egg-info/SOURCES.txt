@@ -2,6 +2,7 @@ CHANGES.txt
 LICENSE.txt
 MANIFEST.in
 README.txt
+entry_points.txt
 setup.cfg
 setup.py
 vendorize.sh

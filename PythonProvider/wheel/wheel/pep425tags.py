@@ -60,7 +60,7 @@ def get_supported(versions=None):
 
     soabi = sysconfig.get_config_var('SOABI')
     if soabi and soabi.startswith('cpython-'):
-        abis[0:0] = ['cp' + soabi.split('-', 1)[-1]]
+        abis[0:0] = ['cp' + soabi.split('-')[1]]
  
     abi3s = set()
     import imp
@@ -85,7 +85,10 @@ def get_supported(versions=None):
             # Tagged specifically as being cross-version compatible 
             # (with just the major version specified)
             supported.append(('%s%s' % (impl, versions[0][0]), 'none', 'any')) 
-            
+    
+    # Major Python version + platform; e.g. binaries not using the Python API
+    supported.append(('py%s' % (versions[0][0]), 'none', arch))
+
     # No abi / arch, generic Python
     for i, version in enumerate(versions):
         supported.append(('py%s' % (version,), 'none', 'any'))
