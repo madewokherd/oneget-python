@@ -523,6 +523,7 @@ namespace PythonProvider
                 startinfo.FileName = filename;
                 startinfo.Arguments = "/quiet /install";
                 startinfo.UseShellExecute = false;
+                request.Debug("Running command: {0} {1}", startinfo.FileName, startinfo.Arguments);
                 Process proc = Process.Start(startinfo);
                 proc.WaitForExit();
                 success = proc.ExitCode == 0;
@@ -569,6 +570,7 @@ namespace PythonProvider
                 startinfo.UseShellExecute = true;
                 startinfo.Verb = "runas";
             }
+            request.Debug("Running command: {0} {1}", startinfo.FileName, startinfo.Arguments);
             Process proc = Process.Start(startinfo);
             proc.WaitForExit();
             succeeded = (proc.ExitCode == 0);
