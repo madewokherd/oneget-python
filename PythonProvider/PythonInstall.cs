@@ -1,6 +1,7 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -23,6 +24,8 @@ namespace PythonProvider
         private bool from_registry;
         private bool reg_user;
         public bool is_64bit;
+
+        private static ConcurrentDictionary<string, string> interpreter_info_cache = new ConcurrentDictionary<string, string>();
 
         internal PythonInstall() : base("Python")
         {
@@ -139,7 +142,12 @@ namespace PythonProvider
 
         private void ReadInterpreterInfo(Request request)
         {
-            string info = QueryPython(string.Format("\"{0}\"", FindPythonScript("get_info.py")), request);
+            string info;
+            if (!interpreter_info_cache.TryGetValue(exe_path, out info))
+            {
+                info = QueryPython(string.Format("\"{0}\"", FindPythonScript("get_info.py")), request);
+                interpreter_info_cache.TryAdd(exe_path, info);
+            }
 
             string[] parts = info.Split(new char[]{'\0'}, 5);
             if (parts.Length != 4)
@@ -520,6 +528,7 @@ namespace PythonProvider
                 success = proc.ExitCode == 0;
             }
             File.Delete(filename);
+            interpreter_info_cache.Clear();
             return success;
         }
 
