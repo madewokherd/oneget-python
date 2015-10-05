@@ -9,8 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using OneGet.Sdk;
-using Microsoft.PackageManagement.Archivers.Compression;
-using Microsoft.PackageManagement.Archivers.Compression.Zip;
+using ICSharpCode.SharpZipLib.Zip;
 
 namespace PythonProvider
 {
@@ -200,41 +199,65 @@ namespace PythonProvider
 
         public static IEnumerable<PythonPackage> PackagesFromFile(string path, Request request)
         {
-            ZipInfo zi=null;
+            Stream inputstream = null;
+
             try
             {
-                zi = new ZipInfo(path);
+                inputstream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             }
-            catch { }
-            if (zi != null)
+            catch (Exception e) {
+                request.Debug("Failed to open {0}: {1}", path, e);
+                goto end;
+            }
+
+            using (inputstream)
             {
-                foreach (var subfile in zi.GetFiles())
+                ZipFile zf = null;
+                try
                 {
-                    if (subfile.Path.EndsWith(".dist-info") && subfile.Name == "METADATA")
+                    inputstream.Seek(0, SeekOrigin.Begin);
+                    zf = new ZipFile(inputstream);
+                    zf.IsStreamOwner = false;
+                }
+                catch (Exception e)
+                {
+                    request.Debug("Failed to open {0} as zip: {1}", path, e);
+                    goto notzip;
+                }
+                using (zf)
+                {
+                    foreach (ZipEntry ze in zf)
                     {
-                        if (subfile.Path.Contains("/"))
+                        if (ze.Name.EndsWith(".dist-info/METADATA"))
                         {
-                            // just so we know we can use these in fastpath
-                            continue;
+                            string distinfoname = ze.Name.Substring(0, ze.Name.Length - 9);
+                            if (distinfoname.Contains("/"))
+                            {
+                                // just so we know we can use these in fastpath
+                                continue;
+                            }
+                            var result = new PythonPackage(null);
+                            result.status = Constants.PackageStatus.Available;
+                            result.archive_path = path;
+                            using (var metadata_stream = zf.GetInputStream(ze))
+                            {
+                                result.ReadMetadata(metadata_stream);
+                            }
+                            using (var wheel_metadata_stream = zf.GetInputStream(zf.GetEntry(string.Format("{0}/WHEEL", distinfoname))))
+                            {
+                                result.ReadWheelMetadata(wheel_metadata_stream);
+                            }
+                            if (distinfoname != string.Format("{0}-{1}.dist-info", escape_package_name(result.name), result.version.raw_version_string))
+                                continue;
+                            result.is_wheel = true;
+                            yield return result;
                         }
-                        var result = new PythonPackage(null);
-                        result.status = Constants.PackageStatus.Available;
-                        result.archive_path = path;
-                        using (var metadata_stream = subfile.OpenRead())
-                        {
-                            result.ReadMetadata(metadata_stream);
-                        }
-                        using (var wheel_metadata_stream = zi.GetFile(string.Format("{0}\\WHEEL", subfile.Path)).OpenRead())
-                        {
-                            result.ReadWheelMetadata(wheel_metadata_stream);
-                        }
-                        if (subfile.Path != string.Format("{0}-{1}.dist-info", escape_package_name(result.name), result.version.raw_version_string))
-                            continue;
-                        result.is_wheel = true;
-                        yield return result;
                     }
                 }
+            notzip: do { } while (false); // Labels must be followed by a statement
             }
+
+        end: do { } while (false); // Labels must be followed by a statement
         }
 
         internal virtual string fastpath

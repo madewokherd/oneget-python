@@ -32,6 +32,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="ICSharpCode.SharpZipLib, Version=0.86.0.518, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
+      <HintPath>packages\SharpZipLib.0.86.0\lib\20\ICSharpCode.SharpZipLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.7.0.1\lib\net40\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -45,31 +49,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Compression\ArchiveException.cs" />
-    <Compile Include="Compression\ArchiveFileInfo.cs" />
-    <Compile Include="Compression\ArchiveFileStreamContext.cs" />
-    <Compile Include="Compression\ArchiveInfo.cs" />
-    <Compile Include="Compression\ArchiveProgressEventArgs.cs" />
-    <Compile Include="Compression\ArchiveProgressType.cs" />
-    <Compile Include="Compression\BasicUnpackStreamContext.cs" />
-    <Compile Include="Compression\CargoStream.cs" />
-    <Compile Include="Compression\CompressionEngine.cs" />
-    <Compile Include="Compression\CompressionLevel.cs" />
-    <Compile Include="Compression\DuplicateStream.cs" />
-    <Compile Include="Compression\IPackStreamContext.cs" />
-    <Compile Include="Compression\IUnpackStreamContext.cs" />
-    <Compile Include="Compression\OffsetStream.cs" />
-    <Compile Include="Compression\SafeNativeMethods.cs" />
-    <Compile Include="Compression\Zip\ConcatStream.cs" />
-    <Compile Include="Compression\Zip\CrcStream.cs" />
-    <Compile Include="Compression\Zip\ZipCompressionMethod.cs" />
-    <Compile Include="Compression\Zip\ZipEngine.cs" />
-    <Compile Include="Compression\Zip\ZipException.cs" />
-    <Compile Include="Compression\Zip\ZipFileInfo.cs" />
-    <Compile Include="Compression\Zip\ZipFormat.cs" />
-    <Compile Include="Compression\Zip\ZipInfo.cs" />
-    <Compile Include="Compression\Zip\ZipPacker.cs" />
-    <Compile Include="Compression\Zip\ZipUnpacker.cs" />
     <Compile Include="PackageVersionComparer.cs" />
     <Compile Include="PyPI.cs" />
     <Compile Include="PythonInstall.cs" />
