@@ -39,7 +39,11 @@ namespace PythonProvider
             if (detailed_info_cache.TryGetValue(key, out result))
                 return result;
             // Using JSON api here because it provides more info in one request than xmlrpc
-            string uri = String.Format("{0}/{1}/{2}/json", source.Item2, Uri.EscapeUriString(name), Uri.EscapeUriString(version));
+            string uri;
+            if (string.IsNullOrWhiteSpace(version))
+                uri = String.Format("{0}/{1}/json", source.Item2, Uri.EscapeUriString(name));
+            else
+                uri = String.Format("{0}/{1}/{2}/json", source.Item2, Uri.EscapeUriString(name), Uri.EscapeUriString(version));
             request.Debug("FETCHING: {0}", uri);
             WebResponse response = WebRequest.Create(uri).GetResponse();
             HttpWebResponse httpresponse = response as HttpWebResponse;
@@ -100,7 +104,7 @@ namespace PythonProvider
             VersionIdentifier required, VersionIdentifier minimum, VersionIdentifier maximum,
             bool no_filter, Request request)
         {
-            var detailed_info = GetDetailedPackageInfo(source, package_name, nonhidden_versions.ElementAt(0), request);
+            var detailed_info = GetDetailedPackageInfo(source, package_name, null, request);
             bool list_all_versions = (no_filter || request.GetOptionValue("AllVersions") == "True");
             var release_listing = detailed_info.GetValue("releases") as JObject;
             List<string> sorted_versions = new List<string>();
@@ -223,6 +227,7 @@ namespace PythonProvider
                             request.Debug("search returned unexpected value in array");
                             continue;
                         }
+                        request.Debug("Python::ContainsSearch got {0} {1}", package_info["name"].ToString(), package_info["version"].ToString());
                         if (package_name != null && package_name != package_info["name"].ToString())
                         {
                             foreach (var package in FilterPackageVersions(source, name, package_name,
