@@ -351,6 +351,11 @@ namespace PythonProvider
 
                 return false;
             }
+            else if (download.packagetype == "sdist")
+            {
+                install_specific = false;
+                return true;
+            }
             return true;
         }
 
@@ -654,13 +659,19 @@ namespace PythonProvider
 
         private bool Install(PythonInstall install, PackageDownload download, Request request)
         {
-            if (download.packagetype == "bdist_wheel")
+            if (download.packagetype != "bdist_wheel")
             {
-                string tempdir, filename;
-                if (!DoDownload(download, out tempdir, out filename, request))
+                if (!install.InstallPip(request))
                     return false;
+            }
 
-                try
+            string tempdir, filename;
+            if (!DoDownload(download, out tempdir, out filename, request))
+                return false;
+
+            try
+            {
+                if (download.packagetype == "bdist_wheel")
                 {
                     foreach (var package in PackagesFromFile(filename, request))
                     {
@@ -670,14 +681,16 @@ namespace PythonProvider
                     request.Error(ErrorCategory.MetadataError, name, "Downloaded package file doesn't contain the expected package.");
                     return false;
                 }
-                finally
+                else
                 {
-                    File.Delete(filename);
-                    Directory.Delete(tempdir);
+                    return install.InstallViaPip(filename, request);
                 }
             }
-            request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for package type {0}", download.packagetype);
-            return false;
+            finally
+            {
+                File.Delete(filename);
+                Directory.Delete(tempdir);
+            }
         }
 
         private static bool InstallDependencies(PythonInstall install, Dictionary<string, PythonPackage> deps, Request request)
@@ -749,13 +762,21 @@ namespace PythonProvider
             }
             else if (source != null)
             {
+                PackageDownload? fallback_download=null;
                 foreach (var download in downloads)
                 {
                     bool install_specific;
-                    if (CanInstall(install, download, out install_specific, request) && install_specific)
+                    if (CanInstall(install, download, out install_specific, request))
                     {
-                        return Install(install, download, request);
+                        if (install_specific)
+                            return Install(install, download, request);
+                        else if (fallback_download == null)
+                            fallback_download = download;
                     }
+                }
+                if (fallback_download != null)
+                {
+                    return Install(install, fallback_download.Value, request);
                 }
                 request.Error(ErrorCategory.NotImplemented, name, "installing not implemented for this package type");
                 return false;

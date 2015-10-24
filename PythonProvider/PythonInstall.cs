@@ -63,6 +63,26 @@ namespace PythonProvider
             return proc.ExitCode;
         }
 
+        public bool InstallViaPip(string filename, Request request)
+        {
+            ProcessStartInfo startinfo = new ProcessStartInfo();
+            startinfo.FileName = exe_path;
+            startinfo.Arguments = string.Format("-m pip install \"{0}\"", filename);
+            if (NeedAdminToWrite())
+            {
+                startinfo.UseShellExecute = true;
+                startinfo.Verb = "runas";
+            }
+            else
+            {
+                startinfo.UseShellExecute = false;
+            }
+            request.Debug("Running command{0}: {1} {2}", startinfo.UseShellExecute ? " as admin" : "", startinfo.FileName, startinfo.Arguments);
+            Process proc = Process.Start(startinfo);
+            proc.WaitForExit();
+            return proc.ExitCode == 0;
+        }
+
         public int UninstallDistinfo(string path, Request request)
         {
             ProcessStartInfo startinfo = new ProcessStartInfo();
@@ -313,6 +333,19 @@ namespace PythonProvider
                     yield return result;
                 }
             }
+        }
+
+        public bool InstallPip(Request request)
+        {
+            foreach (var package in FindInstalledPackages("pip", null, request))
+            {
+                if (package.version.Compare("7.1.2") >= 0)
+                    return true;
+            }
+            foreach (var package in PyPI.ExactSearch("pip", request))
+                return package.Install(this, request);
+            request.Error(ErrorCategory.ObjectNotFound, "pip", "Can't find download for pip");
+            return false;
         }
 
         public string GlobalSiteFolder()
