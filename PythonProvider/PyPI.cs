@@ -263,6 +263,24 @@ namespace PythonProvider
             {
                 foreach (string exact_name in names)
                 {
+                    JObject detailed_info;
+
+                    try
+                    {
+                        detailed_info = GetDetailedPackageInfo(source, exact_name, null, request);
+                    }
+                    catch (WebException)
+                    {
+                        continue;
+                    }
+
+                    string package_name = detailed_info["info"]["name"].ToString();
+
+                    if (!package_name.Equals(exact_name, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        request.Debug("Python::ExactSearch got package named {0} but we're looking for {1}", package_name, exact_name);
+                    }
+
                     MemoryStream call_ms = new MemoryStream();
                     XmlWriter writer = XmlWriter.Create(call_ms);
                     writer.WriteStartElement("methodCall");
@@ -270,7 +288,7 @@ namespace PythonProvider
                     writer.WriteStartElement("params");
                     writer.WriteStartElement("param"); //package_name
                     writer.WriteStartElement("value");
-                    writer.WriteElementString("string", exact_name);
+                    writer.WriteElementString("string", package_name);
                     writer.WriteEndElement(); //value
                     writer.WriteEndElement(); //param
                     writer.WriteEndElement(); //params
@@ -281,7 +299,7 @@ namespace PythonProvider
 
                     using (var response = DoWebRequest(source, call, request))
                     {
-                        request.Debug("Python::ExactSearch asking {0} about {1}", source.Item1, exact_name);
+                        request.Debug("Python::ExactSearch asking {0} about {1}", source.Item1, package_name);
                         var search_response = ParseResponse(response.GetResponseStream(), request) as List<object>;
                         if (search_response == null || search_response.Count == 0)
                         {
@@ -293,7 +311,7 @@ namespace PythonProvider
                         {
                             versions.Add((string)version);
                         }
-                        foreach (var package in FilterPackageVersions(source, exact_name, exact_name,
+                        foreach (var package in FilterPackageVersions(source, package_name, package_name,
                             versions, required, minimum, maximum, no_filter, request))
                             yield return package;
                     }

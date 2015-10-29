@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using OneGet.Sdk;
 using ICSharpCode.SharpZipLib.Zip;
 
@@ -351,7 +350,7 @@ namespace PythonProvider
 
         internal bool MatchesName(string name, Request request)
         {
-            return this.name.Contains(name);
+            return CultureInfo.InvariantCulture.CompareInfo.IndexOf(this.name, name, CompareOptions.IgnoreCase) != -1;
         }
 
         private bool CanInstall(PythonInstall install, PackageDownload download, out bool install_specific, Request request)

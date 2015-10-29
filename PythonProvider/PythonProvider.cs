@@ -82,7 +82,7 @@ namespace PythonProvider
 
         public void FindPackage(string name, string requiredVersion, string minimumVersion, string maximumVersion, int id, Request request)
         {
-            request.Debug("Calling '{0}::FindPackage'", ProviderName);
+            request.Debug("Calling '{0}::FindPackage'({1},{2},{3},{4})", ProviderName, name, requiredVersion, minimumVersion, maximumVersion);
             foreach (var package in PythonWebsite.Search(name, requiredVersion, minimumVersion, maximumVersion, (request.GetOptionValue("AllVersions") == "True"), request))
             {
                 package.YieldSelf(request);
