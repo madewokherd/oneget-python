@@ -68,6 +68,7 @@ namespace PythonProvider
         public string search_key;
         public PythonInstall install;
         private string distinfo_path;
+        private string egginfo_path;
         private string archive_path;
 
         public List<DistRequirement> requires_dist;
@@ -174,6 +175,25 @@ namespace PythonProvider
             return null;
         }
 
+        public static PythonPackage FromEggInfo(string path, PythonInstall install, Request request)
+        {
+            var result = new PythonPackage(null);
+            result.status = Constants.PackageStatus.Installed;
+            result.egginfo_path = path;
+            result.install = install;
+            try
+            {
+                result.ReadMetadata(Path.Combine(path, "PKG-INFO"));
+            }
+            catch (Exception e)
+            {
+                request.Debug(string.Format("Unexpected Exception thrown in 'Python::FromEggInfo' -- {1}\\{2}\r\n{3}"), e.GetType().Name, e.Message, e.StackTrace);
+            }
+            if (result.name != null)
+                return result;
+            return null;
+        }
+
         private static string escape_package_name(string name)
         {
             List<string> alphanumeric_runs = new List<string>();
@@ -266,6 +286,8 @@ namespace PythonProvider
             {
                 if (distinfo_path != null)
                     return string.Format("distinfo:{0}|{1}", install.exe_path, distinfo_path);
+                else if (egginfo_path != null)
+                    return string.Format("egginfo:{0}|{1}", install.exe_path, egginfo_path);
                 else if (source != null)
                     return string.Format("pypi:{0}#{1}#{2}/{3}", source, sourceurl, name, version.raw_version_string);
                 else if (archive_path != null)
@@ -281,6 +303,12 @@ namespace PythonProvider
                 string[] parts = fastreference.Substring(9).Split(new char[] { '|' }, 2);
                 PythonInstall install = PythonInstall.FromPath(parts[0], request);
                 return FromDistInfo(parts[1], install, request);
+            }
+            else if (fastreference.StartsWith("egginfo:"))
+            {
+                string[] parts = fastreference.Substring(8).Split(new char[] { '|' }, 2);
+                PythonInstall install = PythonInstall.FromPath(parts[0], request);
+                return FromEggInfo(parts[1], install, request);
             }
             else if (fastreference.StartsWith("pypi:"))
             {
@@ -793,6 +821,12 @@ namespace PythonProvider
             if (distinfo_path != null)
             {
                 return install.UninstallDistinfo(distinfo_path, request) == 0;
+            }
+            else if (egginfo_path != null)
+            {
+                if (!install.InstallPip(request))
+                    return false;
+                return install.UninstallViaPip(name, request);
             }
             else
             {

@@ -83,6 +83,26 @@ namespace PythonProvider
             return proc.ExitCode == 0;
         }
 
+        public bool UninstallViaPip(string name, Request request)
+        {
+            ProcessStartInfo startinfo = new ProcessStartInfo();
+            startinfo.FileName = exe_path;
+            startinfo.Arguments = string.Format("-m pip uninstall -y \"{0}\"", name);
+            if (NeedAdminToWrite())
+            {
+                startinfo.UseShellExecute = true;
+                startinfo.Verb = "runas";
+            }
+            else
+            {
+                startinfo.UseShellExecute = false;
+            }
+            request.Debug("Running command{0}: {1} {2}", startinfo.UseShellExecute ? " as admin" : "", startinfo.FileName, startinfo.Arguments);
+            Process proc = Process.Start(startinfo);
+            proc.WaitForExit();
+            return proc.ExitCode == 0;
+        }
+
         public int UninstallDistinfo(string path, Request request)
         {
             ProcessStartInfo startinfo = new ProcessStartInfo();
@@ -326,6 +346,17 @@ namespace PythonProvider
             {
                 request.Debug("Python::FindInstalledPackages trying {0}", dir);
                 PythonPackage result = PythonPackage.FromDistInfo(dir, this, request);
+                if (result != null)
+                {
+                    if (name != null && !result.MatchesName(name, request))
+                        continue;
+                    yield return result;
+                }
+            }
+            foreach (string dir in Directory.EnumerateDirectories(path, string.Format("{0}-{1}-*.egg-info", name_wc, version_wc)))
+            {
+                request.Debug("Python::FindInstalledPackages trying {0}", dir);
+                PythonPackage result = PythonPackage.FromEggInfo(dir, this, request);
                 if (result != null)
                 {
                     if (name != null && !result.MatchesName(name, request))
