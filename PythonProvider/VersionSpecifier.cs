@@ -128,10 +128,12 @@ namespace PythonProvider
 
             clause.version = new VersionIdentifier(version_spec, allow_wildcard);
 
+            /* Pandas violates this rule.
             if (clause.type != VersionClauseType.ArbitraryEquality && !clause.version.is_valid)
             {
                 throw new ArgumentException(string.Format("invalid version '{0}'", version_spec));
             }
+            */
 
             if (clause.type == VersionClauseType.Compatible && clause.version.release.Length == 1)
             {
