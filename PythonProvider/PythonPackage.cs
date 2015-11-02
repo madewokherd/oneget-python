@@ -266,7 +266,9 @@ namespace PythonProvider
                             {
                                 result.ReadWheelMetadata(wheel_metadata_stream);
                             }
-                            if (distinfoname != string.Format("{0}-{1}.dist-info", escape_package_name(result.name), result.version.raw_version_string))
+                            if (string.Compare(distinfoname,
+                                string.Format("{0}-{1}.dist-info", escape_package_name(result.name), result.version.raw_version_string),
+                                true, CultureInfo.InvariantCulture) != 0)
                                 continue;
                             result.is_wheel = true;
                             yield return result;
@@ -348,9 +350,19 @@ namespace PythonProvider
             request.YieldSoftwareIdentity(fastpath, name, version == null ? "unknown" : version.ToString(), "pep440", summary ?? "", source ?? archive_path ?? "", search_key ?? "", "", "");
         }
 
-        internal bool MatchesName(string name, Request request)
+        internal static string NormalizeName(string name)
         {
-            return CultureInfo.InvariantCulture.CompareInfo.IndexOf(this.name, name, CompareOptions.IgnoreCase) != -1;
+            return name.Replace('-', '_').ToLowerInvariant();
+        }
+
+        internal static bool NamesEqual(string name1, string name2)
+        {
+            return NormalizeName(name1) == NormalizeName(name2);
+        }
+
+        internal bool MatchesName(string name)
+        {
+            return NamesEqual(name, this.name);
         }
 
         private bool CanInstall(PythonInstall install, PackageDownload download, out bool install_specific, Request request)
@@ -543,7 +555,7 @@ namespace PythonProvider
             if (dep.condition != null)
                 // FIXME: handle this, somehow?
                 return true;
-            if (name != dep.name)
+            if (!MatchesName(dep.name))
                 return false;
             if (dep.has_version_specifier)
             {
@@ -585,7 +597,7 @@ namespace PythonProvider
 
                     request.Debug("Examining dependency {0}", dep.raw_string);
 
-                    if (result.TryGetValue(dep.name, out package))
+                    if (result.TryGetValue(NormalizeName(dep.name), out package))
                     {
                         if (!package.SatisfiesDependency(install, dep, request))
                         {
@@ -596,7 +608,7 @@ namespace PythonProvider
                     }
                     else
                     {
-                        if (installed_packages.TryGetValue(dep.name, out package))
+                        if (installed_packages.TryGetValue(NormalizeName(dep.name), out package))
                         {
                             if (package.SatisfiesDependency(install, dep, request))
                             {
@@ -646,7 +658,7 @@ namespace PythonProvider
                             to_resolve.Enqueue(dep2);
                         }
 
-                        result[package.name] = package;
+                        result[NormalizeName(package.name)] = package;
                     }
                 }
             }
@@ -702,7 +714,7 @@ namespace PythonProvider
                 {
                     foreach (var package in PackagesFromFile(filename, request))
                     {
-                        if (package.name == name && package.version.raw_version_string == version.raw_version_string)
+                        if (package.MatchesName(name) && package.version.raw_version_string == version.raw_version_string)
                             return package.Install(install, request);
                     }
                     request.Error(ErrorCategory.MetadataError, name, "Downloaded package file doesn't contain the expected package.");
@@ -734,10 +746,10 @@ namespace PythonProvider
                     unsatisfied_deps = false;
                     foreach (var dep in package.requires_dist)
                     {
-                        if (deps.ContainsKey(dep.name))
+                        if (deps.ContainsKey(NormalizeName(dep.name)))
                         {
                             // FIXME: Infinite loop if dep graph has cycles
-                            package = deps[dep.name];
+                            package = deps[NormalizeName(dep.name)];
                             unsatisfied_deps = true;
                             break;
                         }
@@ -747,7 +759,7 @@ namespace PythonProvider
                 if (!package.Install(install, request))
                     return false;
 
-                deps.Remove(package.name);
+                deps.Remove(NormalizeName(package.name));
             }
 
             return true;

@@ -348,7 +348,7 @@ namespace PythonProvider
                 PythonPackage result = PythonPackage.FromDistInfo(dir, this, request);
                 if (result != null)
                 {
-                    if (name != null && !result.MatchesName(name, request))
+                    if (!string.IsNullOrWhiteSpace(name) && !result.MatchesName(name))
                         continue;
                     yield return result;
                 }
@@ -359,7 +359,7 @@ namespace PythonProvider
                 PythonPackage result = PythonPackage.FromEggInfo(dir, this, request);
                 if (result != null)
                 {
-                    if (name != null && !result.MatchesName(name, request))
+                    if (!string.IsNullOrWhiteSpace(name) && !result.MatchesName(name))
                         continue;
                     yield return result;
                 }
