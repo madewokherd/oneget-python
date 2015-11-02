@@ -104,7 +104,17 @@ namespace PythonProvider
             VersionIdentifier required, VersionIdentifier minimum, VersionIdentifier maximum,
             bool no_filter, Request request)
         {
-            var detailed_info = GetDetailedPackageInfo(source, package_name, null, request);
+            JObject detailed_info;
+
+            try
+            {
+                detailed_info = GetDetailedPackageInfo(source, package_name, null, request);
+            }
+            catch (WebException)
+            {
+                /* Sometimes the search API lists things that 404 */
+                goto end;
+            }
             bool list_all_versions = (no_filter || request.GetOptionValue("AllVersions") == "True");
             var release_listing = detailed_info.GetValue("releases") as JObject;
             List<string> sorted_versions = new List<string>();
@@ -162,6 +172,7 @@ namespace PythonProvider
                 if (!list_all_versions)
                     break;
             }
+        end: do { } while (false); /* labels require a statement */
         }
 
         private static IEnumerable<PythonPackage> ContainsSearch(string name, string requiredVersion, string minimumVersion, string maximumVersion, Request request)
