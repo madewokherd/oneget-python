@@ -26,7 +26,7 @@ namespace PythonProvider
         public string name;
         public bool has_version_specifier;
         public VersionSpecifier version_specifier;
-        public string condition;
+        public EnvironmentMarker marker;
         public string raw_string;
 
         public static DistRequirement Parse(string requirement)
@@ -37,7 +37,7 @@ namespace PythonProvider
             {
                 string[] parts = requirement.Split(new char[] {';'}, 2);
                 requirement = parts[0].Trim();
-                result.condition = parts[1].Trim();
+                result.marker = EnvironmentMarker.ParseEnvironmentMarker(parts[1].Trim());
             }
             if (requirement.Contains('('))
             {
@@ -552,7 +552,7 @@ namespace PythonProvider
 
         public bool SatisfiesDependency(PythonInstall install, DistRequirement dep, Request request)
         {
-            if (dep.condition != null)
+            if (dep.marker != null && !dep.marker.Eval(install))
                 // FIXME: handle this, somehow?
                 return true;
             if (!MatchesName(dep.name))
@@ -596,6 +596,12 @@ namespace PythonProvider
                     PythonPackage package;
 
                     request.Debug("Examining dependency {0}", dep.raw_string);
+
+                    if (dep.marker != null && !dep.marker.Eval(install))
+                    {
+                        request.Debug("Does not apply to current Python environment");
+                        continue;
+                    }
 
                     if (result.TryGetValue(NormalizeName(dep.name), out package))
                     {
@@ -675,8 +681,7 @@ namespace PythonProvider
             List<PythonPackage> installed_packages = new List<PythonPackage>(install.FindInstalledPackages(null, null, request));
             foreach (var dep in requires_dist)
             {
-                if (dep.condition != null)
-                    // FIXME: handle this, somehow?
+                if (dep.marker != null && !dep.marker.Eval(install))
                     continue;
                 bool satisfied_dependency = false;
                 foreach (var package in installed_packages)
@@ -746,6 +751,8 @@ namespace PythonProvider
                     unsatisfied_deps = false;
                     foreach (var dep in package.requires_dist)
                     {
+                        if (dep.marker != null && !dep.marker.Eval(install))
+                            continue;
                         if (deps.ContainsKey(NormalizeName(dep.name)))
                         {
                             // FIXME: Infinite loop if dep graph has cycles

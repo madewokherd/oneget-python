@@ -94,6 +94,9 @@ namespace PythonProvider
 
             version_string = version_string.Trim().ToLowerInvariant();
 
+            if (string.IsNullOrWhiteSpace(version_string))
+                return false;
+
             // trim 'v' from the start
             if (version_string[0] == 'v' && version_string.Length >= 2)
             {

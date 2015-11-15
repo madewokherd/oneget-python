@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EnvironmentMarker.cs" />
     <Compile Include="PackageVersionComparer.cs" />
     <Compile Include="PyPI.cs" />
     <Compile Include="PythonInstall.cs" />

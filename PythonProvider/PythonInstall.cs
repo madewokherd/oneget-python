@@ -24,6 +24,8 @@ namespace PythonProvider
         private bool from_registry;
         private bool reg_user;
         public bool is_64bit;
+        private string[] string_marker_variables;
+        private VersionIdentifier[] version_marker_variables;
 
         private static ConcurrentDictionary<string, string> interpreter_info_cache = new ConcurrentDictionary<string, string>();
 
@@ -189,14 +191,22 @@ namespace PythonProvider
                 interpreter_info_cache.TryAdd(exe_path, info);
             }
 
-            string[] parts = info.Split(new char[]{'\0'}, 5);
-            if (parts.Length != 4)
+            string[] parts = info.Split(new char[]{'\0'}, 15);
+            if (parts.Length != 14)
                 throw new Exception(string.Format("Bad output from python interpreter at {0}", exe_path));
 
             version = GetPythonVersion(parts[0]);
             global_site_folder = parts[1];
             is_64bit = (parts[2] == "8");
             supported_tags = parts[3].Split('.');
+
+            int i;
+            string_marker_variables = new string[6];
+            for (i = 0; i < 6; i++)
+                string_marker_variables[i] = parts[4 + i];
+            version_marker_variables = new VersionIdentifier[4];
+            for (i = 0; i < 4; i++)
+                version_marker_variables[i] = new VersionIdentifier(parts[10 + i]);
         }
 
         private string[] GetSupportedTags(bool install_64bit)
@@ -224,6 +234,16 @@ namespace PythonProvider
                 result.Add(string.Format("py{0}{1}-none-any", majorversion, i));
             supported_tags = result.ToArray();
             return supported_tags;
+        }
+
+        internal string get_string_marker_variable(EnvironmentMarkerVariable var)
+        {
+            return string_marker_variables[(int)var];
+        }
+
+        internal VersionIdentifier get_version_marker_variable(EnvironmentMarkerVariable var)
+        {
+            return version_marker_variables[(int)var - (int)EnvironmentMarkerVariable.python_version];
         }
 
         public static PythonInstall FromPath(string installpath, Request request)
