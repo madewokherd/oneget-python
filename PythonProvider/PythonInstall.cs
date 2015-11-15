@@ -67,7 +67,7 @@ namespace PythonProvider
         {
             ProcessStartInfo startinfo = new ProcessStartInfo();
             startinfo.FileName = exe_path;
-            startinfo.Arguments = string.Format("-m pip install \"{0}\"", filename);
+            startinfo.Arguments = string.Format("-m pip.__main__ install \"{0}\"", filename);
             if (NeedAdminToWrite())
             {
                 startinfo.UseShellExecute = true;
@@ -87,7 +87,7 @@ namespace PythonProvider
         {
             ProcessStartInfo startinfo = new ProcessStartInfo();
             startinfo.FileName = exe_path;
-            startinfo.Arguments = string.Format("-m pip uninstall -y \"{0}\"", name);
+            startinfo.Arguments = string.Format("-m pip.__main__ uninstall -y \"{0}\"", name);
             if (NeedAdminToWrite())
             {
                 startinfo.UseShellExecute = true;
